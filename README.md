@@ -8,7 +8,7 @@
 ## Setup
 
 ### 1. Create environment file
-Create a `.env` file in the project root.  
+Create a `.env` file from example.env in the project root.
 This file is required for both local development and production.
 
 ### 2. Start PostgreSQL
