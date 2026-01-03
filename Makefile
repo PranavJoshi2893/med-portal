@@ -1,4 +1,4 @@
-BINARY_NAME=boilerplate
+BINARY_NAME=med-portal
 PATH=./cmd/api/main.go
 
 .PHONY: build run clean
