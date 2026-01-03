@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/PranavJoshi2893/boilerplate/internal/config"
-	"github.com/PranavJoshi2893/boilerplate/internal/database"
-	"github.com/PranavJoshi2893/boilerplate/internal/server"
+	"github.com/PranavJoshi2893/med-portal/internal/config"
+	"github.com/PranavJoshi2893/med-portal/internal/database"
+	"github.com/PranavJoshi2893/med-portal/internal/server"
 )
 
 func main() {

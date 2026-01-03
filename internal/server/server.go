@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PranavJoshi2893/boilerplate/internal/config"
+	"github.com/PranavJoshi2893/med-portal/internal/config"
 )
 
 type Server struct {
