@@ -8,3 +8,7 @@ services:
     ports:
       - 5432:5432
     restart: unless-stopped
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
