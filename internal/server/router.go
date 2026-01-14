@@ -32,9 +32,9 @@ func Routes() http.Handler {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Route("/example", func(r chi.Router) {
-			r.Post("/", nil)
-			r.Get("/", nil)
+		r.Route("/users", func(r chi.Router) {
+			r.Post("/register", nil)
+			r.Get("/login", nil)
 			r.Get("/{id}", nil)
 			r.Patch("/{id}", nil)
 			r.Delete("/{id}", nil)
