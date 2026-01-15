@@ -1,4 +1,4 @@
-package pkg
+package responses
 
 import (
 	"encoding/json"
@@ -21,5 +21,4 @@ func JSONResponse(w http.ResponseWriter, status int, message string, data interf
 	}); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}
-
 }

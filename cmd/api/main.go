@@ -5,7 +5,10 @@ import (
 
 	"github.com/PranavJoshi2893/med-portal/internal/config"
 	"github.com/PranavJoshi2893/med-portal/internal/database"
+	"github.com/PranavJoshi2893/med-portal/internal/handler"
+	"github.com/PranavJoshi2893/med-portal/internal/repository"
 	"github.com/PranavJoshi2893/med-portal/internal/server"
+	"github.com/PranavJoshi2893/med-portal/internal/service"
 )
 
 func main() {
@@ -19,7 +22,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	routes := server.Routes()
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
+
+	routes := server.Routes(userHandler)
 
 	srv := server.NewServer(cfg, db, routes)
 

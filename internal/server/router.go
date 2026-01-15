@@ -3,12 +3,13 @@ package server
 import (
 	"net/http"
 
+	"github.com/PranavJoshi2893/med-portal/internal/handler"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
-func Routes() http.Handler {
+func Routes(userHandler *handler.UserHandler) http.Handler {
 
 	r := chi.NewRouter()
 
@@ -33,8 +34,9 @@ func Routes() http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/users", func(r chi.Router) {
-			r.Post("/register", nil)
-			r.Get("/login", nil)
+			r.Post("/register", userHandler.Register)
+			r.Post("/login", userHandler.Login)
+			r.Get("/", userHandler.GetAll)
 			r.Get("/{id}", nil)
 			r.Patch("/{id}", nil)
 			r.Delete("/{id}", nil)

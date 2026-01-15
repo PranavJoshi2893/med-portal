@@ -34,6 +34,12 @@ type UpdateUser struct {
 	LastName  *string `json:"last_name"`
 }
 
+type GetAll struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
+
 func (m *CreateUser) Validate() error {
 
 	// trim trailing and leading space
