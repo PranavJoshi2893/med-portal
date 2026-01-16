@@ -2,8 +2,12 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type UserRepo struct {
@@ -15,6 +19,8 @@ func NewUserRepository(db *sql.DB) *UserRepo {
 		db: db,
 	}
 }
+
+var ErrConflict = errors.New("record already exists")
 
 func (r *UserRepo) Register(user model.User) error {
 	q := `INSERT INTO users(id,first_name,last_name,email,password) Values($1,$2,$3,$4,$5)`
@@ -28,6 +34,9 @@ func (r *UserRepo) Register(user model.User) error {
 		user.Password,
 	)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return fmt.Errorf("%w", model.ErrUserAlreadyExists)
+		}
 		return err
 	}
 
@@ -49,7 +58,7 @@ func (r *UserRepo) Login(user *model.LoginUser) (string, error) {
 
 func (r *UserRepo) GetAll() ([]model.GetAll, error) {
 
-	q := `SELECT first_name, last_name,email FROM users`
+	q := `SELECT id, first_name, last_name, email FROM users`
 
 	data, err := r.db.Query(q)
 	if err != nil {
@@ -63,6 +72,7 @@ func (r *UserRepo) GetAll() ([]model.GetAll, error) {
 		var user model.GetAll
 
 		if err := data.Scan(
+			&user.ID,
 			&user.FirstName,
 			&user.LastName,
 			&user.Email,
@@ -78,4 +88,25 @@ func (r *UserRepo) GetAll() ([]model.GetAll, error) {
 	}
 
 	return users, nil
+}
+
+func (r *UserRepo) DeleteByID(id uuid.UUID) error {
+
+	q := `DELETE FROM users where id = $1`
+
+	res, err := r.db.Exec(q, id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return model.ErrAlreadyDeleted
+	}
+
+	return nil
 }

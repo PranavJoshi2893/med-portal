@@ -1,6 +1,9 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 	"github.com/PranavJoshi2893/med-portal/internal/repository"
 	"github.com/google/uuid"
@@ -29,6 +32,10 @@ func (s *UserService) Register(user *model.CreateUser) error {
 	err := s.repo.Register(newUser)
 
 	if err != nil {
+		if errors.Is(err, model.ErrUserAlreadyExists) {
+			return fmt.Errorf("email %w", err)
+		}
+
 		return err
 	}
 
@@ -52,4 +59,12 @@ func (s *UserService) GetAll() ([]model.GetAll, error) {
 	}
 
 	return users, nil
+}
+
+func (s *UserService) DeleteByID(id uuid.UUID) error {
+	err := s.repo.DeleteByID(id)
+	if errors.Is(err, model.ErrAlreadyDeleted) {
+		return fmt.Errorf("user %w", err)
+	}
+	return nil
 }

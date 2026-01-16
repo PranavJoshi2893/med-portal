@@ -7,6 +7,7 @@ import (
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 	"github.com/PranavJoshi2893/med-portal/internal/service"
 	"github.com/PranavJoshi2893/med-portal/pkg/responses"
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -28,7 +29,19 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.Validate(); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		if vErrs, ok := err.(model.ValidationErrors); ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+
+			json.NewEncoder(w).Encode(map[string]any{
+				"message": "validation failed",
+				"errors":  vErrs,
+			})
+			return
+		}
+
+		// unexpected validation error (should not happen)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -49,7 +62,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.Validate(); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -62,10 +75,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func GetByID(w http.ResponseWriter, r *http.Request) {
-
-// }
-
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	users, err := h.service.GetAll()
 	if err != nil {
@@ -75,10 +84,18 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	responses.JSONResponse(w, http.StatusOK, "Ok", users)
 }
 
-// func UpdateByID(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
 
-// }
+	if err := h.service.DeleteByID(id); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-// func DeleteByID(w http.ResponseWriter, r *http.Request) {
+	responses.JSONResponse(w, http.StatusOK, "Ok", nil)
 
-// }
+}
