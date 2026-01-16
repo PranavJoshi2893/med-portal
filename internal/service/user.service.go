@@ -32,7 +32,7 @@ func (s *UserService) Register(user *model.CreateUser) error {
 	err := s.repo.Register(newUser)
 
 	if err != nil {
-		if errors.Is(err, model.ErrUserAlreadyExists) {
+		if errors.Is(err, model.ErrAlreadyExists) {
 			return fmt.Errorf("email %w", err)
 		}
 

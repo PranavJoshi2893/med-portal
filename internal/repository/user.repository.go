@@ -35,7 +35,7 @@ func (r *UserRepo) Register(user model.User) error {
 	)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-			return fmt.Errorf("%w", model.ErrUserAlreadyExists)
+			return fmt.Errorf("%w", model.ErrAlreadyExists)
 		}
 		return err
 	}

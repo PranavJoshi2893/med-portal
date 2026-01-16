@@ -37,19 +37,19 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.Validate(); err != nil {
-		responses.WriteError(w, responses.FromModelError(err))
+		responses.WriteError(w, responses.FromModelError(err, ""))
 		return
 	}
 
 	if err := h.service.Register(&user); err != nil {
-		responses.WriteError(w, responses.FromModelError(err))
+		responses.WriteError(w, responses.FromModelError(err, "failed to register user"))
 		return
 	}
 
 	responses.WriteSuccess(
 		w,
 		http.StatusCreated,
-		"New user registered",
+		"user registered successfully",
 		nil,
 	)
 }
@@ -71,19 +71,19 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.Validate(); err != nil {
-		responses.WriteError(w, responses.FromModelError(err))
+		responses.WriteError(w, responses.FromModelError(err, ""))
 		return
 	}
 
 	if err := h.service.Login(&user); err != nil {
-		responses.WriteError(w, responses.FromModelError(err))
+		responses.WriteError(w, responses.FromModelError(err, "login failed"))
 		return
 	}
 
 	responses.WriteSuccess(
 		w,
 		http.StatusOK,
-		"Login Successful",
+		"login successful",
 		nil,
 	)
 
@@ -92,14 +92,14 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	users, err := h.service.GetAll()
 	if err != nil {
-		responses.WriteError(w, responses.FromModelError(err))
+		responses.WriteError(w, responses.FromModelError(err, "failed to fetch user data"))
 		return
 	}
 
 	responses.WriteSuccess(
 		w,
 		http.StatusOK,
-		"OK",
+		"success",
 		users,
 	)
 }
@@ -116,14 +116,14 @@ func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.DeleteByID(id); err != nil {
-		responses.WriteError(w, responses.FromModelError(err))
+		responses.WriteError(w, responses.FromModelError(err, "failed to remove user data"))
 		return
 	}
 
 	responses.WriteSuccess(
 		w,
 		http.StatusOK,
-		"User Deleted Successfully",
+		"user deleted successfully",
 		nil,
 	)
 

@@ -7,7 +7,7 @@ import (
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 )
 
-func FromModelError(err error) ErrorResponse {
+func FromModelError(err error, message string) ErrorResponse {
 	var vErrs model.ValidationErrors
 
 	switch {
@@ -15,29 +15,29 @@ func FromModelError(err error) ErrorResponse {
 		return ErrorResponse{
 			Code:    http.StatusUnprocessableEntity,
 			Status:  "VALIDATION_ERROR",
-			Message: "Validation failed",
+			Message: "validation error",
 			Fields:  vErrs,
 		}
 
-	case errors.Is(err, model.ErrUserAlreadyExists):
+	case errors.Is(err, model.ErrAlreadyExists):
 		return ErrorResponse{
 			Code:    http.StatusConflict,
 			Status:  "ALREADY_EXISTS",
-			Message: "User already exists",
+			Message: message,
 		}
 
-	case errors.Is(err, model.ErrUserNotFound):
+	case errors.Is(err, model.ErrNotFound):
 		return ErrorResponse{
 			Code:    http.StatusNotFound,
 			Status:  "NOT_FOUND",
-			Message: "User not found",
+			Message: message,
 		}
 
 	case errors.Is(err, model.ErrAlreadyDeleted):
 		return ErrorResponse{
 			Code:    http.StatusGone,
 			Status:  "ALREADY_DELETED",
-			Message: "Already deleted or does not exist",
+			Message: message,
 		}
 
 	default:
