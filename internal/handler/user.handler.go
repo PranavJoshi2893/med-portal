@@ -23,79 +23,108 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var user model.CreateUser
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	defer r.Body.Close()
+
+	if err := dec.Decode(&user); err != nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "INVALID_JSON",
+			Message: "Invalid JSON payload",
+		})
 		return
 	}
 
 	if err := user.Validate(); err != nil {
-		if vErrs, ok := err.(model.ValidationErrors); ok {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnprocessableEntity)
-
-			json.NewEncoder(w).Encode(map[string]any{
-				"message": "validation failed",
-				"errors":  vErrs,
-			})
-			return
-		}
-
-		// unexpected validation error (should not happen)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		responses.WriteError(w, responses.FromModelError(err))
 		return
 	}
 
 	if err := h.service.Register(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		responses.WriteError(w, responses.FromModelError(err))
 		return
 	}
 
-	responses.JSONResponse(w, http.StatusCreated, "New user registered", nil)
+	responses.WriteSuccess(
+		w,
+		http.StatusCreated,
+		"New user registered",
+		nil,
+	)
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var user model.LoginUser
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	defer r.Body.Close()
+
+	if err := dec.Decode(&user); err != nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "INVALID_JSON",
+			Message: "Invalid JSON payload",
+		})
 		return
 	}
 
 	if err := user.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		responses.WriteError(w, responses.FromModelError(err))
 		return
 	}
 
 	if err := h.service.Login(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		responses.WriteError(w, responses.FromModelError(err))
 		return
 	}
 
-	responses.JSONResponse(w, http.StatusOK, "Login successful", nil)
+	responses.WriteSuccess(
+		w,
+		http.StatusOK,
+		"Login Successful",
+		nil,
+	)
 
 }
 
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	users, err := h.service.GetAll()
 	if err != nil {
-		http.Error(w, "Something bad happen when retriving data", http.StatusBadRequest)
+		responses.WriteError(w, responses.FromModelError(err))
+		return
 	}
 
-	responses.JSONResponse(w, http.StatusOK, "Ok", users)
+	responses.WriteSuccess(
+		w,
+		http.StatusOK,
+		"OK",
+		users,
+	)
 }
 
 func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "INVALID_ID",
+			Message: "Invalid User ID",
+		})
 		return
 	}
 
 	if err := h.service.DeleteByID(id); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		responses.WriteError(w, responses.FromModelError(err))
 		return
 	}
 
-	responses.JSONResponse(w, http.StatusOK, "Ok", nil)
+	responses.WriteSuccess(
+		w,
+		http.StatusOK,
+		"User Deleted Successfully",
+		nil,
+	)
 
 }

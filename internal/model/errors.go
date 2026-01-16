@@ -5,7 +5,6 @@ import "errors"
 var (
 	ErrUserAlreadyExists = errors.New("already exists")
 	ErrUserNotFound      = errors.New("not found")
-	ErrValidationFailed  = errors.New("validation failed")
 	ErrAlreadyDeleted    = errors.New("already deleted or does not exist")
 )
 

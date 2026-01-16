@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"net/mail"
 	"strings"
 	"unicode"
@@ -49,7 +48,7 @@ func (m *CreateUser) Validate() error {
 	var errs ValidationErrors
 
 	// normalize
-	m.FirstName = strings.TrimSpace(m.FirstName)
+	m.Email = strings.ToLower(strings.TrimSpace(m.Email))
 	m.LastName = strings.TrimSpace(m.LastName)
 	m.Email = strings.TrimSpace(m.Email)
 
@@ -89,8 +88,6 @@ func (m *CreateUser) Validate() error {
 				Field:   "email",
 				Message: "invalid email",
 			})
-		} else {
-			m.Email = strings.ToLower(m.Email)
 		}
 	}
 
@@ -123,24 +120,33 @@ func (m *CreateUser) Validate() error {
 }
 
 func (m *LoginUser) Validate() error {
+	var errs ValidationErrors
 
-	m.Email = strings.TrimSpace(m.Email)
+	m.Email = strings.ToLower(strings.TrimSpace(m.Email))
 
 	if m.Email == "" {
-		return fmt.Errorf("email is required")
+		errs = append(errs, FieldError{
+			Field:   "email",
+			Message: "email is required",
+		})
+	} else {
+		addr, err := mail.ParseAddress(m.Email)
+		if err != nil || addr.Address != m.Email {
+			errs = append(errs, FieldError{
+				Field:   "email",
+				Message: "invalid email",
+			})
+		} else {
+			m.Email = strings.ToLower(m.Email)
+		}
 	}
 
 	if m.Password == "" {
-		return fmt.Errorf("password is required")
+		errs = append(errs, FieldError{
+			Field:   "password",
+			Message: "password is required",
+		})
 	}
-
-	addr, err := mail.ParseAddress(m.Email)
-	if err != nil || addr.Address != m.Email {
-		return fmt.Errorf("invalid email")
-	}
-
-	// normalize email
-	m.Email = strings.ToLower(m.Email)
 
 	return nil
 }
