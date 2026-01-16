@@ -42,7 +42,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Register(&user); err != nil {
-		responses.WriteError(w, responses.FromModelError(err, "failed to register user"))
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Login(&user); err != nil {
-		responses.WriteError(w, responses.FromModelError(err, "login failed"))
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	users, err := h.service.GetAll()
 	if err != nil {
-		responses.WriteError(w, responses.FromModelError(err, "failed to fetch user data"))
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
 
@@ -116,7 +116,7 @@ func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.DeleteByID(id); err != nil {
-		responses.WriteError(w, responses.FromModelError(err, "failed to remove user data"))
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
 
