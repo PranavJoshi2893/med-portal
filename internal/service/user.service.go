@@ -68,3 +68,14 @@ func (s *UserService) DeleteByID(id uuid.UUID) error {
 	}
 	return nil
 }
+
+func (s *UserService) GetByID(id uuid.UUID) (*model.GetByID, error) {
+
+	user, err := s.repo.GetByID(id)
+	if errors.Is(err, model.ErrNotFound) {
+		return nil, fmt.Errorf("user %w", err)
+	}
+
+	return user, nil
+
+}

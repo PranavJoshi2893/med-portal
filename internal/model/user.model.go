@@ -40,6 +40,13 @@ type GetAll struct {
 	Email     string `json:"email"`
 }
 
+type GetByID struct {
+	ID        string `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
+
 type DeleteUser struct {
 	ID uuid.UUID `json:"id"`
 }

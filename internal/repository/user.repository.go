@@ -90,11 +90,32 @@ func (r *UserRepo) GetAll() ([]model.GetAll, error) {
 	return users, nil
 }
 
+func (r *UserRepo) GetByID(id uuid.UUID) (*model.GetByID, error) {
+	q := `SELECT id, first_name, last_name, email FROM users WHERE id = $1`
+
+	var user model.GetByID
+	if err := r.db.QueryRow(q, id).Scan(
+		&user.ID,
+		&user.FirstName,
+		&user.LastName,
+		&user.Email,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, model.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+
+}
+
 func (r *UserRepo) DeleteByID(id uuid.UUID) error {
 
-	q := `DELETE FROM users where id = $1`
+	q := `DELETE FROM users WHERE id = $1`
 
 	res, err := r.db.Exec(q, id)
+
 	if err != nil {
 		return err
 	}

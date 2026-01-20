@@ -104,6 +104,25 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "INVALID_ID",
+			Message: "Invalid User ID",
+		})
+	}
+
+	var user *model.GetByID
+	if user, err = h.service.GetByID(id); err != nil {
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
+		return
+	}
+
+	responses.WriteSuccess(w, http.StatusOK, "success", user)
+}
+
 func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {

@@ -38,7 +38,7 @@ func Routes(userHandler *handler.UserHandler) http.Handler {
 			r.Post("/login", userHandler.Login)
 			r.Get("/", userHandler.GetAll)
 			r.Delete("/{id}", userHandler.DeleteByID)
-			r.Get("/{id}", nil)
+			r.Get("/{id}", userHandler.GetByID)
 			r.Patch("/{id}", nil)
 		})
 	})
