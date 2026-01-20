@@ -6,30 +6,43 @@ import (
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 	"github.com/PranavJoshi2893/med-portal/internal/repository"
+	"github.com/PranavJoshi2893/med-portal/pkg/encrypt"
 	"github.com/google/uuid"
 )
 
 type UserService struct {
-	repo *repository.UserRepo
+	repo   *repository.UserRepo
+	hasher *encrypt.PasswordHasher
 }
 
-func NewUserService(repo *repository.UserRepo) *UserService {
+func NewUserService(repo *repository.UserRepo, pepper string) *UserService {
 	return &UserService{
-		repo: repo,
+		repo:   repo,
+		hasher: encrypt.NewPasswordHasher(pepper),
 	}
 }
 
 func (s *UserService) Register(user *model.CreateUser) error {
 
+	id, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("failed to genereate uuid: %w", err)
+	}
+
+	hashedPassword, err := s.hasher.HashPassword(user.Password)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
 	newUser := model.User{
-		ID:        uuid.New(),
+		ID:        id,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
-		Password:  user.Password,
+		Password:  hashedPassword,
 	}
 
-	err := s.repo.Register(newUser)
+	err = s.repo.Register(newUser)
 
 	if err != nil {
 		if errors.Is(err, model.ErrAlreadyExists) {

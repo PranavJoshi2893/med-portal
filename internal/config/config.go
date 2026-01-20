@@ -15,6 +15,7 @@ type Config struct {
 	DBSSLMode  string
 	DBHost     string
 	DBPort     string
+	Pepper     string
 }
 
 func Load() (*Config, error) {
@@ -32,5 +33,6 @@ func Load() (*Config, error) {
 		DBSSLMode:  os.Getenv("POSTGRES_SSLMODE"),
 		DBHost:     os.Getenv("POSTGRES_HOST"),
 		DBPort:     os.Getenv("POSTGRES_PORT"),
+		Pepper:     os.Getenv("PEPPER"),
 	}, nil
 }
