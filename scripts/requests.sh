@@ -10,3 +10,4 @@ curl -X POST http://localhost:3000/api/v1/users/register -H "Content-Type: appli
 curl -X GET http://localhost:3000/api/v1/users/
 curl -X GET http://localhost:3000/api/v1/users/8497f8e9-98cf-4408-a46d-393a220bf2d4
 curl -X DELETE http://localhost:3000/api/v1/users/8497f8e9-98cf-4408-a46d-393a220bf2d4
+curl -X POST http://localhost:3000/api/v1/users/login -H "Content-Type: application/json" -d '{"email":"pranavjoshi@gmail.com","password":"Admin@123"}'

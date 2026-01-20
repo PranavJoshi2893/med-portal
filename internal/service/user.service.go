@@ -56,10 +56,15 @@ func (s *UserService) Register(user *model.CreateUser) error {
 }
 
 func (s *UserService) Login(user *model.LoginUser) error {
-	_, err := s.repo.Login(user)
-
+	data, err := s.repo.GetByEmail(user.Email)
 	if err != nil {
-		return err
+		if errors.Is(err, model.ErrNotFound) {
+			return fmt.Errorf("email %w", err)
+		}
+	}
+
+	if ok := s.hasher.VerifyPassword(user.Password, data.Password); !ok {
+		return fmt.Errorf("unauthorized")
 	}
 
 	return nil

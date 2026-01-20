@@ -47,6 +47,11 @@ type GetByID struct {
 	Email     string `json:"email"`
 }
 
+type GetByEmail struct {
+	Email    string `json:"id"`
+	Password string `json:"password"`
+}
+
 type DeleteUser struct {
 	ID uuid.UUID `json:"id"`
 }

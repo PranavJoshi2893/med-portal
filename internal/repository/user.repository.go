@@ -131,3 +131,21 @@ func (r *UserRepo) DeleteByID(id uuid.UUID) error {
 
 	return nil
 }
+
+func (r *UserRepo) GetByEmail(email string) (*model.GetByEmail, error) {
+	q := `SELECT email,password FROM users WHERE email=$1`
+
+	var user model.GetByEmail
+	if err := r.db.QueryRow(q, email).Scan(
+		&user.Email,
+		&user.Password,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, model.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+
+}
