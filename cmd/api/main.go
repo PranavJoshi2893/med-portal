@@ -23,7 +23,7 @@ func main() {
 	}
 
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, cfg.Pepper)
+	userService := service.NewUserService(userRepo, cfg.Pepper, cfg.AccessTokenKey, cfg.RefreshTokenKey)
 	userHandler := handler.NewUserHandler(userService)
 
 	routes := server.Routes(userHandler)

@@ -137,7 +137,7 @@ func (r *UserRepo) GetByEmail(email string) (*model.GetByEmail, error) {
 
 	var user model.GetByEmail
 	if err := r.db.QueryRow(q, email).Scan(
-		&user.Email,
+		&user.ID,
 		&user.Password,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -147,5 +147,4 @@ func (r *UserRepo) GetByEmail(email string) (*model.GetByEmail, error) {
 	}
 
 	return &user, nil
-
 }

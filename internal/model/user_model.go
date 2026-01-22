@@ -48,12 +48,17 @@ type GetByID struct {
 }
 
 type GetByEmail struct {
-	Email    string `json:"id"`
-	Password string `json:"password"`
+	ID       string
+	Password string
 }
 
 type DeleteUser struct {
 	ID uuid.UUID `json:"id"`
+}
+
+type LoginResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (m *CreateUser) Validate() error {

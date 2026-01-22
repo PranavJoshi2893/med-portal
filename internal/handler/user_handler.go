@@ -75,7 +75,8 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.Login(&user); err != nil {
+	data, err := h.service.Login(&user)
+	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
@@ -84,7 +85,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		w,
 		http.StatusOK,
 		"login successful",
-		nil,
+		&data,
 	)
 
 }
