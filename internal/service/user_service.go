@@ -12,13 +12,13 @@ import (
 )
 
 type UserService struct {
-	repo            *repository.UserRepo
+	repo            repository.UserRepository
 	hasher          *encrypt.PasswordHasher
 	accessTokenKey  string
 	refreshTokenKey string
 }
 
-func NewUserService(repo *repository.UserRepo, pepper string, accessTokenKey string, refreshTokenKey string) *UserService {
+func NewUserService(repo repository.UserRepository, pepper string, accessTokenKey string, refreshTokenKey string) *UserService {
 	return &UserService{
 		repo:            repo,
 		hasher:          encrypt.NewPasswordHasher(pepper),

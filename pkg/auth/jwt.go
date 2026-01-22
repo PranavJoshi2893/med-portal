@@ -4,19 +4,20 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type AccessClaims struct {
-	UserID string `json:"user_id"`
+	UserID uuid.UUID `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
 type RefreshClaims struct {
-	UserID string `json:"user_id"`
+	UserID uuid.UUID `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(key string, userID string) (string, error) {
+func GenerateAccessToken(key string, userID uuid.UUID) (string, error) {
 	accessTokenKey := []byte(key)
 
 	claims := AccessClaims{
@@ -32,7 +33,7 @@ func GenerateAccessToken(key string, userID string) (string, error) {
 
 }
 
-func GenerateRefreshToken(key string, userID string) (string, error) {
+func GenerateRefreshToken(key string, userID uuid.UUID) (string, error) {
 	refreshTokenKey := []byte(key)
 
 	claims := RefreshClaims{

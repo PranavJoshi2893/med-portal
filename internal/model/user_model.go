@@ -34,10 +34,10 @@ type UpdateUser struct {
 }
 
 type GetAll struct {
-	ID        string `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
 }
 
 type GetByID struct {
@@ -48,7 +48,7 @@ type GetByID struct {
 }
 
 type GetByEmail struct {
-	ID       string
+	ID       uuid.UUID
 	Password string
 }
 

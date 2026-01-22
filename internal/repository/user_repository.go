@@ -10,6 +10,14 @@ import (
 	"github.com/lib/pq"
 )
 
+type UserRepository interface {
+	Register(user model.User) error
+	GetByEmail(email string) (*model.GetByEmail, error)
+	GetAll() ([]model.GetAll, error)
+	DeleteByID(id uuid.UUID) error
+	GetByID(id uuid.UUID) (*model.GetByID, error)
+}
+
 type UserRepo struct {
 	db *sql.DB
 }
