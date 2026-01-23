@@ -41,10 +41,10 @@ type GetAll struct {
 }
 
 type GetByID struct {
-	ID        string `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
 }
 
 type GetByEmail struct {

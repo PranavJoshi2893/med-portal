@@ -1,167 +1,113 @@
 package service
 
-// import (
-// 	"slices"
-// 	"testing"
+import (
+	"reflect"
+	"slices"
+	"testing"
 
-// 	"github.com/PranavJoshi2893/med-portal/internal/model"
-// 	"github.com/PranavJoshi2893/med-portal/pkg/encrypt"
-// 	"github.com/google/uuid"
-// )
+	"github.com/PranavJoshi2893/med-portal/internal/model"
+	"github.com/google/uuid"
+)
 
-// type mockUserRepo struct {
-// 	registerFunc   func(user model.User) error
-// 	getByEmailFunc func(email string) (*model.GetByEmail, error)
-// 	getAllFunc     func() ([]model.GetAll, error)
-// 	deleteByIDFunc func(id uuid.UUID) error
-// 	getByIDFunc    func(id uuid.UUID) (*model.GetByID, error)
-// }
+type mockUserRepo struct {
+	getAllFunc     func() ([]model.GetAll, error)
+	deleteByIDFunc func(id uuid.UUID) error
+	getByIDFunc    func(id uuid.UUID) (*model.GetByID, error)
+}
 
-// func (m *mockUserRepo) Register(user model.User) error {
-// 	if m.registerFunc != nil {
-// 		return m.registerFunc(user)
-// 	}
-// 	return nil
-// }
+func (m *mockUserRepo) GetAll() ([]model.GetAll, error) {
+	if m.getAllFunc != nil {
+		return m.getAllFunc()
+	}
+	return nil, nil
+}
 
-// func (m *mockUserRepo) GetByEmail(email string) (*model.GetByEmail, error) {
-// 	if m.getByEmailFunc != nil {
-// 		return m.getByEmailFunc(email)
-// 	}
-// 	return nil, nil
-// }
+func (m *mockUserRepo) DeleteByID(id uuid.UUID) error {
+	if m.deleteByIDFunc != nil {
+		return m.deleteByIDFunc(id)
+	}
+	return nil
+}
 
-// // Method 3: GetAll
-// func (m *mockUserRepo) GetAll() ([]model.GetAll, error) {
-// 	if m.getAllFunc != nil {
-// 		return m.getAllFunc()
-// 	}
-// 	return nil, nil
-// }
+func (m *mockUserRepo) GetByID(id uuid.UUID) (*model.GetByID, error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(id)
+	}
+	return nil, nil
+}
 
-// // Method 4: DeleteByID - THIS WAS MISSING!
-// func (m *mockUserRepo) DeleteByID(id uuid.UUID) error {
-// 	if m.deleteByIDFunc != nil {
-// 		return m.deleteByIDFunc(id)
-// 	}
-// 	return nil
-// }
+func TestUserService_GetAll_Success(t *testing.T) {
 
-// // Method 5: GetByID
-// func (m *mockUserRepo) GetByID(id uuid.UUID) (*model.GetByID, error) {
-// 	if m.getByIDFunc != nil {
-// 		return m.getByIDFunc(id)
-// 	}
-// 	return nil, nil
-// }
+	testID_1, _ := uuid.NewV7()
+	testID_2, _ := uuid.NewV7()
 
-// func TestUserService_Register_Success(t *testing.T) {
+	users := []model.GetAll{
+		{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"},
+		{ID: testID_2, FirstName: "Jane", LastName: "Doe", Email: "janedoe@test.com"},
+	}
 
-// 	mock := &mockUserRepo{
-// 		registerFunc: func(user model.User) error {
-// 			return nil
-// 		},
-// 	}
+	mock := &mockUserRepo{
+		getAllFunc: func() ([]model.GetAll, error) {
+			return users, nil
+		},
+	}
 
-// 	service := &UserService{
-// 		repo:   mock,
-// 		hasher: encrypt.NewPasswordHasher("test-pepper"),
-// 	}
+	service := NewUserService(mock)
 
-// 	user := &model.CreateUser{
-// 		FirstName: "john",
-// 		LastName:  "doe",
-// 		Email:     "johndoe@test.com",
-// 		Password:  "pass123",
-// 	}
+	resp, err := service.GetAll()
 
-// 	err := service.Register(user)
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
 
-// 	if err != nil {
-// 		t.Errorf("Expected no error, got: %v", err)
-// 	}
+	if !slices.Equal(resp, users) {
+		t.Errorf("got: %v want %v", resp, users)
+	}
+}
 
-// }
+func TestUserService_GetByID_Success(t *testing.T) {
+	testID, _ := uuid.NewV7()
 
-// func TestUserService_Login_Success(t *testing.T) {
+	user := model.GetByID{
+		ID:        testID,
+		FirstName: "John",
+		LastName:  "Doe",
+		Email:     "johndoe@test.com",
+	}
 
-// 	hasher := encrypt.NewPasswordHasher("test-pepper")
-// 	hashedPassword, _ := hasher.HashPassword("password123")
+	mock := &mockUserRepo{
+		getByIDFunc: func(id uuid.UUID) (*model.GetByID, error) {
+			return &user, nil
+		},
+	}
 
-// 	testID, _ := uuid.NewV7()
+	service := NewUserService(mock)
 
-// 	mock := &mockUserRepo{
-// 		getByEmailFunc: func(email string) (*model.GetByEmail, error) {
+	resp, err := service.GetByID(testID)
 
-// 			return &model.GetByEmail{
-// 				ID:       testID,
-// 				Password: hashedPassword,
-// 			}, nil
-// 		},
-// 	}
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
 
-// 	service := NewUserService(
-// 		mock,
-// 		"test-pepper",
-// 		"test-access-key",
-// 		"test-refresh-key",
-// 	)
+	if !reflect.DeepEqual(&user, resp) {
+		t.Errorf("got %v want %v", user, resp)
+	}
 
-// 	loginUser := &model.LoginUser{
-// 		Email:    "johndoe@test.com",
-// 		Password: "password123",
-// 	}
+}
 
-// 	resp, err := service.Login(loginUser)
+func TestUserService_DeleteByID_Success(t *testing.T) {
+	testID, _ := uuid.NewV7()
 
-// 	if err != nil {
-// 		t.Errorf("Expected no error, got: %v", err)
-// 	}
+	mock := &mockUserRepo{
+		deleteByIDFunc: func(id uuid.UUID) error {
+			return nil
+		},
+	}
 
-// 	if resp == nil {
-// 		t.Fatal("Expected response, got nil")
-// 	}
+	service := NewUserService(mock)
 
-// 	if resp.AccessToken == "" {
-// 		t.Error("Expected access token, got empty string")
-// 	}
-
-// 	if resp.RefreshToken == "" {
-// 		t.Error("Expected refresh token, got empty string")
-// 	}
-
-// }
-
-// func TestUserService_GetAll_Success(t *testing.T) {
-
-// 	testID_1, _ := uuid.NewV7()
-// 	testID_2, _ := uuid.NewV7()
-
-// 	users := []model.GetAll{
-// 		{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"},
-// 		{ID: testID_2, FirstName: "Jane", LastName: "Doe", Email: "janedoe@test.com"},
-// 	}
-
-// 	mock := &mockUserRepo{
-// 		getAllFunc: func() ([]model.GetAll, error) {
-// 			return users, nil
-// 		},
-// 	}
-
-// 	service := NewUserService(
-// 		mock,
-// 		"",
-// 		"",
-// 		"",
-// 	)
-
-// 	resp, err := service.GetAll()
-
-// 	if err != nil {
-// 		t.Errorf("Expected no error, got: %v", err)
-// 	}
-
-// 	if !slices.Equal(resp, users) {
-// 		t.Errorf("got: %v want %v", resp, users)
-// 	}
-// }
+	err := service.DeleteByID(testID)
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+}
