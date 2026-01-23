@@ -22,11 +22,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	authRepo := repository.NewAuthRepository(db)
+	authService := service.NewAuthService(authRepo, cfg.Pepper, cfg.AccessTokenKey, cfg.RefreshTokenKey)
+	authHandler := handler.NewAuthHandler(authService)
+
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, cfg.Pepper, cfg.AccessTokenKey, cfg.RefreshTokenKey)
+	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
-	routes := server.Routes(userHandler)
+	routes := server.Routes(authHandler, userHandler)
 
 	srv := server.NewServer(cfg, db, routes)
 

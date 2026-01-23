@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
@@ -18,76 +17,6 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 	return &UserHandler{
 		service: service,
 	}
-}
-
-func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var user model.CreateUser
-
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	defer r.Body.Close()
-
-	if err := dec.Decode(&user); err != nil {
-		responses.WriteError(w, responses.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Status:  "INVALID_JSON",
-			Message: "Invalid JSON payload",
-		})
-		return
-	}
-
-	if err := user.Validate(); err != nil {
-		responses.WriteError(w, responses.FromModelError(err, ""))
-		return
-	}
-
-	if err := h.service.Register(&user); err != nil {
-		responses.WriteError(w, responses.FromModelError(err, err.Error()))
-		return
-	}
-
-	responses.WriteSuccess(
-		w,
-		http.StatusCreated,
-		"user registered successfully",
-		nil,
-	)
-}
-
-func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var user model.LoginUser
-
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	defer r.Body.Close()
-
-	if err := dec.Decode(&user); err != nil {
-		responses.WriteError(w, responses.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Status:  "INVALID_JSON",
-			Message: "Invalid JSON payload",
-		})
-		return
-	}
-
-	if err := user.Validate(); err != nil {
-		responses.WriteError(w, responses.FromModelError(err, ""))
-		return
-	}
-
-	data, err := h.service.Login(&user)
-	if err != nil {
-		responses.WriteError(w, responses.FromModelError(err, err.Error()))
-		return
-	}
-
-	responses.WriteSuccess(
-		w,
-		http.StatusOK,
-		"login successful",
-		&data,
-	)
-
 }
 
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {

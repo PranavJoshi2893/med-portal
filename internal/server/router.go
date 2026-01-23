@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func Routes(userHandler *handler.UserHandler) http.Handler {
+func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler) http.Handler {
 
 	r := chi.NewRouter()
 
@@ -33,14 +33,18 @@ func Routes(userHandler *handler.UserHandler) http.Handler {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authHandler.Register)
+			r.Post("/login", authHandler.Login)
+		})
+
 		r.Route("/users", func(r chi.Router) {
-			r.Post("/register", userHandler.Register)
-			r.Post("/login", userHandler.Login)
 			r.Get("/", userHandler.GetAll)
 			r.Delete("/{id}", userHandler.DeleteByID)
 			r.Get("/{id}", userHandler.GetByID)
 			r.Patch("/{id}", nil)
 		})
 	})
+
 	return r
 }

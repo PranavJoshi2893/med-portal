@@ -2,17 +2,12 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
-	"fmt"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 type UserRepository interface {
-	Register(user model.User) error
-	GetByEmail(email string) (*model.GetByEmail, error)
 	GetAll() ([]model.GetAll, error)
 	DeleteByID(id uuid.UUID) error
 	GetByID(id uuid.UUID) (*model.GetByID, error)
@@ -26,42 +21,6 @@ func NewUserRepository(db *sql.DB) *UserRepo {
 	return &UserRepo{
 		db: db,
 	}
-}
-
-var ErrConflict = errors.New("record already exists")
-
-func (r *UserRepo) Register(user model.User) error {
-	q := `INSERT INTO users(id,first_name,last_name,email,password) Values($1,$2,$3,$4,$5)`
-
-	_, err := r.db.Exec(
-		q,
-		user.ID,
-		user.FirstName,
-		user.LastName,
-		user.Email,
-		user.Password,
-	)
-	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-			return fmt.Errorf("%w", model.ErrAlreadyExists)
-		}
-		return err
-	}
-
-	return nil
-}
-
-func (r *UserRepo) Login(user *model.LoginUser) (string, error) {
-
-	q := `SELECT password FROM users WHERE email = $1`
-
-	var hashedPassword string
-	err := r.db.QueryRow(q, user.Email).Scan(&hashedPassword)
-	if err != nil {
-		return "", err
-	}
-
-	return hashedPassword, nil
 }
 
 func (r *UserRepo) GetAll() ([]model.GetAll, error) {
@@ -138,21 +97,4 @@ func (r *UserRepo) DeleteByID(id uuid.UUID) error {
 	}
 
 	return nil
-}
-
-func (r *UserRepo) GetByEmail(email string) (*model.GetByEmail, error) {
-	q := `SELECT email,password FROM users WHERE email=$1`
-
-	var user model.GetByEmail
-	if err := r.db.QueryRow(q, email).Scan(
-		&user.ID,
-		&user.Password,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, model.ErrNotFound
-		}
-		return nil, err
-	}
-
-	return &user, nil
 }
