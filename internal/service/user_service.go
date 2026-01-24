@@ -39,8 +39,12 @@ func (s *UserService) DeleteByID(id uuid.UUID) error {
 func (s *UserService) GetByID(id uuid.UUID) (*model.GetByID, error) {
 
 	user, err := s.repo.GetByID(id)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, fmt.Errorf("user %w", err)
+
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return nil, fmt.Errorf("user %w", err)
+		}
+		return nil, err
 	}
 
 	return user, nil

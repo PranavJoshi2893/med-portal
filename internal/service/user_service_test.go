@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"reflect"
 	"slices"
 	"testing"
@@ -36,7 +37,9 @@ func (m *mockUserRepo) GetByID(id uuid.UUID) (*model.GetByID, error) {
 	return nil, nil
 }
 
-func TestUserService_GetAll_Success(t *testing.T) {
+var errRepo = errors.New("repo error")
+
+func TestUserService_GetAll(t *testing.T) {
 
 	testID_1, _ := uuid.NewV7()
 	testID_2, _ := uuid.NewV7()
@@ -46,26 +49,64 @@ func TestUserService_GetAll_Success(t *testing.T) {
 		{ID: testID_2, FirstName: "Jane", LastName: "Doe", Email: "janedoe@test.com"},
 	}
 
-	mock := &mockUserRepo{
-		getAllFunc: func() ([]model.GetAll, error) {
-			return users, nil
+	tests := []struct {
+		name      string
+		mockFunc  func() ([]model.GetAll, error)
+		expectErr bool
+		expect    []model.GetAll
+	}{
+		{
+			name: "sucess",
+			mockFunc: func() ([]model.GetAll, error) {
+				return users, nil
+			},
+			expectErr: false,
+			expect:    users,
+		},
+		{
+			name: "repo error",
+			mockFunc: func() ([]model.GetAll, error) {
+				return nil, errRepo
+			},
+			expectErr: true,
+		},
+		{
+			name: "nil slice treated as empty",
+			mockFunc: func() ([]model.GetAll, error) {
+				return nil, nil
+			},
+			expectErr: false,
+			expect:    []model.GetAll{},
 		},
 	}
 
-	service := NewUserService(mock)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &mockUserRepo{getAllFunc: tt.mockFunc}
+			service := NewUserService(mock)
 
-	resp, err := service.GetAll()
+			resp, err := service.GetAll()
 
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if !slices.Equal(resp, tt.expect) {
+				t.Errorf("got %v want %v", resp, tt.expect)
+			}
+		})
 	}
 
-	if !slices.Equal(resp, users) {
-		t.Errorf("got: %v want %v", resp, users)
-	}
 }
 
-func TestUserService_GetByID_Success(t *testing.T) {
+func TestUserService_GetByID(t *testing.T) {
 	testID, _ := uuid.NewV7()
 
 	user := model.GetByID{
@@ -75,24 +116,59 @@ func TestUserService_GetByID_Success(t *testing.T) {
 		Email:     "johndoe@test.com",
 	}
 
-	mock := &mockUserRepo{
-		getByIDFunc: func(id uuid.UUID) (*model.GetByID, error) {
-			return &user, nil
+	tests := []struct {
+		name      string
+		mockFunc  func(id uuid.UUID) (*model.GetByID, error)
+		expectErr bool
+		expect    *model.GetByID
+	}{
+		{
+			name: "success",
+			mockFunc: func(id uuid.UUID) (*model.GetByID, error) {
+				return &user, nil
+			},
+			expectErr: false,
+			expect:    &user,
+		},
+		{
+			name: "repo error",
+			mockFunc: func(id uuid.UUID) (*model.GetByID, error) {
+				return nil, errRepo
+			},
+			expectErr: true,
+		},
+		{
+			name: "user not found",
+			mockFunc: func(id uuid.UUID) (*model.GetByID, error) {
+				return nil, model.ErrNotFound
+			},
+			expectErr: true,
 		},
 	}
 
-	service := NewUserService(mock)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &mockUserRepo{getByIDFunc: tt.mockFunc}
+			service := NewUserService(mock)
 
-	resp, err := service.GetByID(testID)
+			resp, err := service.GetByID(testID)
 
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if !reflect.DeepEqual(resp, tt.expect) {
+				t.Errorf("got %+v want %+v", resp, tt.expect)
+			}
+		})
 	}
-
-	if !reflect.DeepEqual(&user, resp) {
-		t.Errorf("got %v want %v", user, resp)
-	}
-
 }
 
 func TestUserService_DeleteByID_Success(t *testing.T) {
