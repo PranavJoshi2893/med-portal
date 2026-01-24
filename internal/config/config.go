@@ -8,13 +8,16 @@ import (
 )
 
 type Config struct {
-	ServerPort string
-	DBUser     string
-	DBName     string
-	DBPassword string
-	DBSSLMode  string
-	DBHost     string
-	DBPort     string
+	ServerPort      string
+	DBUser          string
+	DBName          string
+	DBPassword      string
+	DBSSLMode       string
+	DBHost          string
+	DBPort          string
+	Pepper          string
+	AccessTokenKey  string
+	RefreshTokenKey string
 }
 
 func Load() (*Config, error) {
@@ -25,12 +28,15 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		ServerPort: os.Getenv("PORT"),
-		DBUser:     os.Getenv("POSTGRES_USER"),
-		DBName:     os.Getenv("POSTGRES_DB"),
-		DBPassword: os.Getenv("POSTGRES_PASSWORD"),
-		DBSSLMode:  os.Getenv("POSTGRES_SSLMODE"),
-		DBHost:     os.Getenv("POSTGRES_HOST"),
-		DBPort:     os.Getenv("POSTGRES_PORT"),
+		ServerPort:      os.Getenv("PORT"),
+		DBUser:          os.Getenv("POSTGRES_USER"),
+		DBName:          os.Getenv("POSTGRES_DB"),
+		DBPassword:      os.Getenv("POSTGRES_PASSWORD"),
+		DBSSLMode:       os.Getenv("POSTGRES_SSLMODE"),
+		DBHost:          os.Getenv("POSTGRES_HOST"),
+		DBPort:          os.Getenv("POSTGRES_PORT"),
+		Pepper:          os.Getenv("PEPPER"),
+		AccessTokenKey:  os.Getenv("ACCESS_TOKEN_KEY"),
+		RefreshTokenKey: os.Getenv("REFRESH_TOKEN_KEY"),
 	}, nil
 }
