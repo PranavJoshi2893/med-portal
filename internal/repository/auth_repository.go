@@ -45,7 +45,7 @@ func (r *AuthRepo) Register(user model.User) error {
 }
 
 func (r *AuthRepo) Login(email string) (*model.GetByEmail, error) {
-	q := `SELECT email,password FROM users WHERE email=$1`
+	q := `SELECT id, password FROM users WHERE email=$1`
 
 	var user model.GetByEmail
 	if err := r.db.QueryRow(q, email).Scan(

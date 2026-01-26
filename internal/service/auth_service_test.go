@@ -27,30 +27,59 @@ func (m *mockAuthRepo) Login(email string) (*model.GetByEmail, error) {
 	return nil, nil
 }
 
-func TestAuthService_Register_Success(t *testing.T) {
+func TestAuthService_Register(t *testing.T) {
 
-	mock := &mockAuthRepo{
-		registerFunc: func(user model.User) error {
-			return nil
+	tests := []struct {
+		name      string
+		mockFunc  func(user model.User) error
+		expectErr bool
+	}{
+		{
+			name: "success",
+			mockFunc: func(user model.User) error {
+				return nil
+			},
+			expectErr: false,
+		},
+		{
+			name: "repo error",
+			mockFunc: func(user model.User) error {
+				return errRepo
+			},
+			expectErr: true,
 		},
 	}
 
-	service := &AuthService{
-		repo:   mock,
-		hasher: encrypt.NewPasswordHasher("test-pepper"),
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &mockAuthRepo{registerFunc: tt.mockFunc}
+			service := &AuthService{
+				mock,
+				encrypt.NewPasswordHasher("test-pepper"),
+				"test-access-key",
+				"test=refresh-key",
+			}
 
-	user := &model.CreateUser{
-		FirstName: "john",
-		LastName:  "doe",
-		Email:     "johndoe@test.com",
-		Password:  "pass123",
-	}
+			user := &model.CreateUser{
+				FirstName: "john",
+				LastName:  "doe",
+				Email:     "johndoe@test.com",
+				Password:  "pass123",
+			}
 
-	err := service.Register(user)
+			err := service.Register(user)
 
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
 	}
 
 }
