@@ -171,19 +171,48 @@ func TestUserService_GetByID(t *testing.T) {
 	}
 }
 
-func TestUserService_DeleteByID_Success(t *testing.T) {
+func TestUserService_DeleteByID(t *testing.T) {
+
 	testID, _ := uuid.NewV7()
 
-	mock := &mockUserRepo{
-		deleteByIDFunc: func(id uuid.UUID) error {
-			return nil
+	tests := []struct {
+		name      string
+		mockFunc  func(id uuid.UUID) error
+		expectErr bool
+	}{
+		{
+			name: "success",
+			mockFunc: func(id uuid.UUID) error {
+				return nil
+			},
+			expectErr: false,
+		},
+		{
+			name: "repo error",
+			mockFunc: func(id uuid.UUID) error {
+				return errRepo
+			},
+			expectErr: true,
 		},
 	}
 
-	service := NewUserService(mock)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &mockUserRepo{deleteByIDFunc: tt.mockFunc}
+			service := NewUserService(mock)
 
-	err := service.DeleteByID(testID)
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
+			err := service.DeleteByID(testID)
+
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
 	}
 }

@@ -66,6 +66,7 @@ func (s *AuthService) Login(user *model.LoginUser) (*model.LoginResponse, error)
 		if errors.Is(err, model.ErrNotFound) {
 			return nil, fmt.Errorf("email %w", err)
 		}
+		return nil, err
 	}
 
 	if ok := s.hasher.VerifyPassword(user.Password, data.Password); !ok {

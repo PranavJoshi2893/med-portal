@@ -30,8 +30,12 @@ func (s *UserService) GetAll() ([]model.GetAll, error) {
 
 func (s *UserService) DeleteByID(id uuid.UUID) error {
 	err := s.repo.DeleteByID(id)
-	if errors.Is(err, model.ErrAlreadyDeleted) {
-		return fmt.Errorf("user %w", err)
+
+	if err != nil {
+		if errors.Is(err, model.ErrAlreadyDeleted) {
+			return fmt.Errorf("user %w", err)
+		}
+		return err
 	}
 	return nil
 }
