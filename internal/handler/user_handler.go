@@ -20,7 +20,8 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 }
 
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	users, err := h.service.GetAll()
+	ctx := r.Context()
+	users, err := h.service.GetAll(ctx)
 	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
@@ -44,8 +45,10 @@ func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	ctx := r.Context()
+
 	var user *model.GetByID
-	if user, err = h.service.GetByID(id); err != nil {
+	if user, err = h.service.GetByID(ctx, id); err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
@@ -64,7 +67,9 @@ func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.DeleteByID(id); err != nil {
+	ctx := r.Context()
+
+	if err := h.service.DeleteByID(ctx, id); err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}

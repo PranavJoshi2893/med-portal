@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
@@ -9,20 +10,20 @@ import (
 )
 
 type mockAuthRepo struct {
-	registerFunc func(user model.User) error
-	loginFunc    func(email string) (*model.GetByEmail, error)
+	registerFunc func(ctx context.Context, user model.User) error
+	loginFunc    func(ctx context.Context, email string) (*model.GetByEmail, error)
 }
 
-func (m *mockAuthRepo) Register(user model.User) error {
+func (m *mockAuthRepo) Register(ctx context.Context, user model.User) error {
 	if m.registerFunc != nil {
-		return m.registerFunc(user)
+		return m.registerFunc(ctx, user)
 	}
 	return nil
 }
 
-func (m *mockAuthRepo) Login(email string) (*model.GetByEmail, error) {
+func (m *mockAuthRepo) Login(ctx context.Context, email string) (*model.GetByEmail, error) {
 	if m.loginFunc != nil {
-		return m.loginFunc(email)
+		return m.loginFunc(ctx, email)
 	}
 	return nil, nil
 }
@@ -31,19 +32,19 @@ func TestAuthService_Register(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		mockFunc  func(user model.User) error
+		mockFunc  func(ctx context.Context, user model.User) error
 		expectErr bool
 	}{
 		{
 			name: "success",
-			mockFunc: func(user model.User) error {
+			mockFunc: func(ctx context.Context, user model.User) error {
 				return nil
 			},
 			expectErr: false,
 		},
 		{
 			name: "repo error",
-			mockFunc: func(user model.User) error {
+			mockFunc: func(ctx context.Context, user model.User) error {
 				return errRepo
 			},
 			expectErr: true,
@@ -67,7 +68,7 @@ func TestAuthService_Register(t *testing.T) {
 				Password:  "pass123",
 			}
 
-			err := service.Register(user)
+			err := service.Register(context.Background(), user)
 
 			if tt.expectErr {
 				if err == nil {
@@ -94,7 +95,7 @@ func TestAuthService_Login(t *testing.T) {
 	tests := []struct {
 		name      string
 		loginData *model.LoginUser
-		mockFunc  func(email string) (*model.GetByEmail, error)
+		mockFunc  func(ctx context.Context, email string) (*model.GetByEmail, error)
 		expectErr bool
 	}{
 		{
@@ -103,7 +104,7 @@ func TestAuthService_Login(t *testing.T) {
 				Email:    "johndoe@test.com",
 				Password: "password123",
 			},
-			mockFunc: func(email string) (*model.GetByEmail, error) {
+			mockFunc: func(ctx context.Context, email string) (*model.GetByEmail, error) {
 				return &model.GetByEmail{
 					ID:       testID,
 					Password: hashedPassword,
@@ -117,7 +118,7 @@ func TestAuthService_Login(t *testing.T) {
 				Email:    "missing@test.com",
 				Password: "password123",
 			},
-			mockFunc: func(email string) (*model.GetByEmail, error) {
+			mockFunc: func(ctx context.Context, email string) (*model.GetByEmail, error) {
 				return nil, model.ErrNotFound
 			},
 			expectErr: true,
@@ -128,7 +129,7 @@ func TestAuthService_Login(t *testing.T) {
 				Email:    "johndoe@test.com",
 				Password: "wrong-password",
 			},
-			mockFunc: func(email string) (*model.GetByEmail, error) {
+			mockFunc: func(ctx context.Context, email string) (*model.GetByEmail, error) {
 				return &model.GetByEmail{
 					ID:       testID,
 					Password: hashedPassword,
@@ -151,7 +152,7 @@ func TestAuthService_Login(t *testing.T) {
 				"test-refresh-key",
 			)
 
-			resp, err := service.Login(tt.loginData)
+			resp, err := service.Login(context.Background(), tt.loginData)
 
 			if tt.expectErr {
 				if err == nil {

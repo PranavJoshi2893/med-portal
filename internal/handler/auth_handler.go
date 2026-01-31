@@ -40,7 +40,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.Register(&user); err != nil {
+	ctx := r.Context()
+
+	if err := h.service.Register(ctx,&user); err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
@@ -74,7 +76,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := h.service.Login(&user)
+	ctx := r.Context()
+
+	data, err := h.service.Login(ctx,&user)
 	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return

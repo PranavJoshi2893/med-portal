@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/PranavJoshi2893/med-portal/internal/handler"
 	"github.com/go-chi/chi/v5"
@@ -16,6 +17,7 @@ func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler) 
 	r.Use(middleware.Logger)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
+	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:4200"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

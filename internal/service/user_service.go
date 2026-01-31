@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -19,8 +20,8 @@ func NewUserService(repo repository.UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) GetAll() ([]model.GetAll, error) {
-	users, err := s.repo.GetAll()
+func (s *UserService) GetAll(ctx context.Context) ([]model.GetAll, error) {
+	users, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -28,8 +29,8 @@ func (s *UserService) GetAll() ([]model.GetAll, error) {
 	return users, nil
 }
 
-func (s *UserService) DeleteByID(id uuid.UUID) error {
-	err := s.repo.DeleteByID(id)
+func (s *UserService) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	err := s.repo.DeleteByID(ctx, id)
 
 	if err != nil {
 		if errors.Is(err, model.ErrAlreadyDeleted) {
@@ -40,9 +41,9 @@ func (s *UserService) DeleteByID(id uuid.UUID) error {
 	return nil
 }
 
-func (s *UserService) GetByID(id uuid.UUID) (*model.GetByID, error) {
+func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
 
-	user, err := s.repo.GetByID(id)
+	user, err := s.repo.GetByID(ctx, id)
 
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {

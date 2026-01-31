@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -27,7 +28,7 @@ func NewAuthService(repo repository.AuthRepository, pepper string, accessTokenKe
 	}
 }
 
-func (s *AuthService) Register(user *model.CreateUser) error {
+func (s *AuthService) Register(ctx context.Context, user *model.CreateUser) error {
 
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -47,7 +48,7 @@ func (s *AuthService) Register(user *model.CreateUser) error {
 		Password:  hashedPassword,
 	}
 
-	err = s.repo.Register(newUser)
+	err = s.repo.Register(ctx, newUser)
 
 	if err != nil {
 		if errors.Is(err, model.ErrAlreadyExists) {
@@ -60,8 +61,8 @@ func (s *AuthService) Register(user *model.CreateUser) error {
 	return nil
 }
 
-func (s *AuthService) Login(user *model.LoginUser) (*model.LoginResponse, error) {
-	data, err := s.repo.Login(user.Email)
+func (s *AuthService) Login(ctx context.Context, user *model.LoginUser) (*model.LoginResponse, error) {
+	data, err := s.repo.Login(ctx, user.Email)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return nil, fmt.Errorf("email %w", err)

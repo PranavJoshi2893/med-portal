@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -9,8 +10,8 @@ import (
 )
 
 type AuthRepository interface {
-	Register(user model.User) error
-	Login(email string) (*model.GetByEmail, error)
+	Register(ctx context.Context, user model.User) error
+	Login(ctx context.Context, email string) (*model.GetByEmail, error)
 }
 
 type AuthRepo struct {
@@ -23,10 +24,11 @@ func NewAuthRepository(db *sql.DB) *AuthRepo {
 	}
 }
 
-func (r *AuthRepo) Register(user model.User) error {
+func (r *AuthRepo) Register(ctx context.Context, user model.User) error {
 	q := `INSERT INTO users(id,first_name,last_name,email,password) Values($1,$2,$3,$4,$5)`
 
-	_, err := r.db.Exec(
+	_, err := r.db.ExecContext(
+		ctx,
 		q,
 		user.ID,
 		user.FirstName,
@@ -44,11 +46,11 @@ func (r *AuthRepo) Register(user model.User) error {
 	return nil
 }
 
-func (r *AuthRepo) Login(email string) (*model.GetByEmail, error) {
+func (r *AuthRepo) Login(ctx context.Context, email string) (*model.GetByEmail, error) {
 	q := `SELECT id, password FROM users WHERE email=$1`
 
 	var user model.GetByEmail
-	if err := r.db.QueryRow(q, email).Scan(
+	if err := r.db.QueryRowContext(ctx, q, email).Scan(
 		&user.ID,
 		&user.Password,
 	); err != nil {

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
@@ -8,9 +9,9 @@ import (
 )
 
 type UserRepository interface {
-	GetAll() ([]model.GetAll, error)
-	DeleteByID(id uuid.UUID) error
-	GetByID(id uuid.UUID) (*model.GetByID, error)
+	GetAll(ctx context.Context) ([]model.GetAll, error)
+	DeleteByID(ctx context.Context, id uuid.UUID) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
 }
 
 type UserRepo struct {
@@ -23,11 +24,11 @@ func NewUserRepository(db *sql.DB) *UserRepo {
 	}
 }
 
-func (r *UserRepo) GetAll() ([]model.GetAll, error) {
+func (r *UserRepo) GetAll(ctx context.Context) ([]model.GetAll, error) {
 
 	q := `SELECT id, first_name, last_name, email FROM users`
 
-	data, err := r.db.Query(q)
+	data, err := r.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +58,11 @@ func (r *UserRepo) GetAll() ([]model.GetAll, error) {
 	return users, nil
 }
 
-func (r *UserRepo) GetByID(id uuid.UUID) (*model.GetByID, error) {
+func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
 	q := `SELECT id, first_name, last_name, email FROM users WHERE id = $1`
 
 	var user model.GetByID
-	if err := r.db.QueryRow(q, id).Scan(
+	if err := r.db.QueryRowContext(ctx, q, id).Scan(
 		&user.ID,
 		&user.FirstName,
 		&user.LastName,
@@ -77,11 +78,11 @@ func (r *UserRepo) GetByID(id uuid.UUID) (*model.GetByID, error) {
 
 }
 
-func (r *UserRepo) DeleteByID(id uuid.UUID) error {
+func (r *UserRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 	q := `DELETE FROM users WHERE id = $1`
 
-	res, err := r.db.Exec(q, id)
+	res, err := r.db.ExecContext(ctx, q, id)
 
 	if err != nil {
 		return err
