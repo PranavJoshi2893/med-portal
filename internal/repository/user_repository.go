@@ -26,7 +26,7 @@ func NewUserRepository(db *sql.DB) *UserRepo {
 
 func (r *UserRepo) GetAll(ctx context.Context) ([]model.GetAll, error) {
 
-	q := `SELECT id, first_name, last_name, email FROM users`
+	q := `SELECT id, first_name, last_name, email FROM users WHERE is_deleted = false`
 
 	data, err := r.db.QueryContext(ctx, q)
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]model.GetAll, error) {
 }
 
 func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
-	q := `SELECT id, first_name, last_name, email FROM users WHERE id = $1`
+	q := `SELECT id, first_name, last_name, email FROM users WHERE id = $1 AND is_deleted = false`
 
 	var user model.GetByID
 	if err := r.db.QueryRowContext(ctx, q, id).Scan(
@@ -80,21 +80,24 @@ func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, e
 
 func (r *UserRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
-	q := `DELETE FROM users WHERE id = $1`
+	q := `SELECT is_deleted FROM users WHERE id = $1`
 
-	res, err := r.db.ExecContext(ctx, q, id)
-
-	if err != nil {
+	var isDeleted bool
+	if err := r.db.QueryRowContext(ctx, q, id).Scan(&isDeleted); err != nil {
+		if err == sql.ErrNoRows {
+			return model.ErrNotFound
+		}
 		return err
 	}
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rows == 0 {
+	if isDeleted {
 		return model.ErrAlreadyDeleted
+	}
+
+	q = `UPDATE users SET is_deleted = true WHERE id = $1`
+
+	if _, err := r.db.ExecContext(ctx, q, id); err != nil {
+		return err
 	}
 
 	return nil

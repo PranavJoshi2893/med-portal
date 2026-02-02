@@ -47,7 +47,7 @@ func (r *AuthRepo) Register(ctx context.Context, user model.User) error {
 }
 
 func (r *AuthRepo) Login(ctx context.Context, email string) (*model.GetByEmail, error) {
-	q := `SELECT id, password FROM users WHERE email=$1`
+	q := `SELECT id, password FROM users WHERE email=$1 AND is_deleted = false`
 
 	var user model.GetByEmail
 	if err := r.db.QueryRowContext(ctx, q, email).Scan(

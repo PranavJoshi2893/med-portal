@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	if err := h.service.Register(ctx,&user); err != nil {
+	if err := h.service.Register(ctx, &user); err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
@@ -78,17 +78,31 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	data, err := h.service.Login(ctx,&user)
+	data, err := h.service.Login(ctx, &user)
 	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    data.RefreshToken,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/api/v1/auth/refresh",
+		MaxAge:   60 * 60 * 24 * 7,
+	})
+
 	responses.WriteSuccess(
 		w,
 		http.StatusOK,
 		"login successful",
-		&data,
+		struct {
+			AccessToken string `json:"access_token"`
+		}{
+			AccessToken: data.AccessToken,
+		},
 	)
 
 }

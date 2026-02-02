@@ -4,13 +4,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/PranavJoshi2893/med-portal/internal/config"
 	"github.com/PranavJoshi2893/med-portal/internal/handler"
+	appMiddleware "github.com/PranavJoshi2893/med-portal/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
-func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler) http.Handler {
+func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler, cfg *config.Config) http.Handler {
 
 	r := chi.NewRouter()
 
@@ -41,6 +43,7 @@ func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler) 
 		})
 
 		r.Route("/users", func(r chi.Router) {
+			r.Use(appMiddleware.AccessTokenMiddleware(cfg))
 			r.Get("/", userHandler.GetAll)
 			r.Delete("/{id}", userHandler.DeleteByID)
 			r.Get("/{id}", userHandler.GetByID)

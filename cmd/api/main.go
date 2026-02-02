@@ -30,7 +30,7 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
-	routes := server.Routes(authHandler, userHandler)
+	routes := server.Routes(authHandler, userHandler, cfg)
 
 	srv := server.NewServer(cfg, db, routes)
 
