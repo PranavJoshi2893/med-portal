@@ -40,7 +40,7 @@ echo "=== Update user ==="
 curl -s -X PATCH "$BASE_URL/users/$USER_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"first_name":"Pranav123","last_name":"Joshi123"}' | jq
+  -d '{"first_name":"Pranav","last_name":"Joshi-Updated"}' | jq
 
 # --- Refresh (uses cookie from login) ---
 echo "=== Refresh token ==="
