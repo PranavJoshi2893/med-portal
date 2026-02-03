@@ -33,7 +33,7 @@ func (s *AuthService) Register(ctx context.Context, user *model.CreateUser) erro
 
 	id, err := uuid.NewV7()
 	if err != nil {
-		return fmt.Errorf("failed to genereate uuid: %w", err)
+		return fmt.Errorf("failed to generate uuid: %w", err)
 	}
 
 	hashedPassword, err := s.hasher.HashPassword(user.Password)
@@ -99,7 +99,8 @@ func (s *AuthService) Login(ctx context.Context, user *model.LoginUser) (*model.
 		return nil, fmt.Errorf("internal server error")
 	}
 
-	err = s.repo.StoreRefreshToken(ctx, id, data.ID, refresh_token, time.Now().Add(time.Hour*24*7))
+	tokenHash := encrypt.HashToken(refresh_token)
+	err = s.repo.StoreRefreshToken(ctx, id, data.ID, tokenHash, time.Now().Add(time.Hour*24*7))
 	if err != nil {
 		return nil, fmt.Errorf("internal server error")
 	}
@@ -113,10 +114,11 @@ func (s *AuthService) Login(ctx context.Context, user *model.LoginUser) (*model.
 }
 
 func (s *AuthService) Logout(ctx context.Context, token string) error {
-	err := s.repo.RevokeRefreshToken(ctx, token)
+	tokenHash := encrypt.HashToken(token)
+	err := s.repo.RevokeRefreshToken(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
-			return err
+			return nil
 		}
 		return fmt.Errorf("internal server error")
 	}
@@ -134,10 +136,40 @@ func (s *AuthService) Refresh(ctx context.Context) (*model.LoginResponse, error)
 		role = "user"
 	}
 
+	oldToken, _ := ctx.Value("refresh_token").(string)
+	if oldToken != "" {
+		tokenHash := encrypt.HashToken(oldToken)
+		if err := s.repo.RevokeRefreshToken(ctx, tokenHash); err != nil {
+			if errors.Is(err, model.ErrNotFound) {
+				return nil, model.ErrUnauthorized
+			}
+			return nil, fmt.Errorf("internal server error")
+		}
+	}
+
 	accessToken, err := auth.GenerateAccessToken(s.accessTokenKey, userID, role)
 	if err != nil {
 		return nil, fmt.Errorf("internal server error")
 	}
 
-	return &model.LoginResponse{AccessToken: accessToken}, nil
+	refreshToken, err := auth.GenerateRefreshToken(s.refreshTokenKey, userID, role)
+	if err != nil {
+		return nil, fmt.Errorf("internal server error")
+	}
+
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("internal server error")
+	}
+
+	tokenHash := encrypt.HashToken(refreshToken)
+	err = s.repo.StoreRefreshToken(ctx, id, userID, tokenHash, time.Now().Add(time.Hour*24*7))
+	if err != nil {
+		return nil, fmt.Errorf("internal server error")
+	}
+
+	return &model.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }

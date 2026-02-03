@@ -10,6 +10,18 @@ import (
 	"github.com/google/uuid"
 )
 
+func getCallerFromContext(ctx interface{ Value(any) any }) (*uuid.UUID, string) {
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	if !ok {
+		return nil, ""
+	}
+	role, _ := ctx.Value("role").(string)
+	if role == "" {
+		role = "user"
+	}
+	return &userID, role
+}
+
 type UserHandler struct {
 	service *service.UserService
 }
@@ -22,7 +34,16 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	users, err := h.service.GetAll(ctx)
+	callerID, callerRole := getCallerFromContext(ctx)
+	if callerID == nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Status:  "UNAUTHORIZED",
+			Message: "Unauthorized",
+		})
+		return
+	}
+	users, err := h.service.GetAll(ctx, *callerID, callerRole)
 	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
@@ -48,9 +69,18 @@ func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	callerID, callerRole := getCallerFromContext(ctx)
+	if callerID == nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Status:  "UNAUTHORIZED",
+			Message: "Unauthorized",
+		})
+		return
+	}
 
 	var user *model.GetByID
-	if user, err = h.service.GetByID(ctx, id); err != nil {
+	if user, err = h.service.GetByID(ctx, id, *callerID, callerRole); err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
@@ -70,8 +100,17 @@ func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	callerID, callerRole := getCallerFromContext(ctx)
+	if callerID == nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Status:  "UNAUTHORIZED",
+			Message: "Unauthorized",
+		})
+		return
+	}
 
-	if err := h.service.DeleteByID(ctx, id); err != nil {
+	if err := h.service.DeleteByID(ctx, id, *callerID, callerRole); err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
@@ -82,7 +121,6 @@ func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		"user deleted successfully",
 		nil,
 	)
-
 }
 
 func (h *UserHandler) UpdateByID(w http.ResponseWriter, r *http.Request) {
@@ -113,8 +151,22 @@ func (h *UserHandler) UpdateByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := user.Validate(); err != nil {
+		responses.WriteError(w, responses.FromModelError(err, ""))
+		return
+	}
+
 	ctx := r.Context()
-	err = h.service.UpdateByID(ctx, id, user)
+	callerID, callerRole := getCallerFromContext(ctx)
+	if callerID == nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Status:  "UNAUTHORIZED",
+			Message: "Unauthorized",
+		})
+		return
+	}
+	err = h.service.UpdateByID(ctx, id, user, *callerID, callerRole)
 	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return

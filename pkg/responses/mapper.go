@@ -54,6 +54,13 @@ func FromModelError(err error, message string) ErrorResponse {
 			Message: message,
 		}
 
+	case errors.Is(err, model.ErrForbidden):
+		return ErrorResponse{
+			Code:    http.StatusForbidden,
+			Status:  "FORBIDDEN",
+			Message: message,
+		}
+
 	default:
 		return ErrorResponse{
 			Code:    http.StatusInternalServerError,

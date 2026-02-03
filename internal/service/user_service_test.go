@@ -59,42 +59,72 @@ func TestUserService_GetAll(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		mockFunc  func(ctx context.Context) ([]model.GetAll, error)
-		expectErr bool
-		expect    []model.GetAll
+		name        string
+		mockFunc    func(ctx context.Context) ([]model.GetAll, error)
+		getByIDFunc func(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
+		callerID    *uuid.UUID
+		callerRole  string
+		expectErr   bool
+		expect      []model.GetAll
 	}{
 		{
-			name: "sucess",
+			name: "success - admin gets all",
 			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
 				return users, nil
 			},
-			expectErr: false,
-			expect:    users,
+			callerID:   &testID_1,
+			callerRole: "admin",
+			expectErr:  false,
+			expect:     users,
 		},
 		{
 			name: "repo error",
 			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
 				return nil, errRepo
 			},
-			expectErr: true,
+			callerID:   &testID_1,
+			callerRole: "admin",
+			expectErr:  true,
 		},
 		{
 			name: "nil slice treated as empty",
 			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
 				return nil, nil
 			},
-			expectErr: false,
-			expect:    []model.GetAll{},
+			callerID:   &testID_1,
+			callerRole: "admin",
+			expectErr:  false,
+			expect:     []model.GetAll{},
+		},
+		{
+			name: "regular user gets only self",
+			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
+				return nil, nil
+			},
+			getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
+				return &model.GetByID{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"}, nil
+			},
+			callerID:   &testID_1,
+			callerRole: "user",
+			expectErr:  false,
+			expect:     []model.GetAll{{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockUserRepo{getAllFunc: tt.mockFunc}
+			mock := &mockUserRepo{getAllFunc: tt.mockFunc, getByIDFunc: tt.getByIDFunc}
 			service := NewUserService(mock)
+			callerID := testID_1
+			if tt.callerID != nil {
+				callerID = *tt.callerID
+			}
+			callerRole := tt.callerRole
+			if callerRole == "" {
+				callerRole = "user"
+			}
 
-			resp, err := service.GetAll(context.Background())
+			resp, err := service.GetAll(context.Background(), callerID, callerRole)
 
 			if tt.expectErr {
 				if err == nil {
@@ -126,32 +156,59 @@ func TestUserService_GetByID(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		mockFunc  func(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
-		expectErr bool
-		expect    *model.GetByID
+		name       string
+		mockFunc   func(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
+		callerID   uuid.UUID
+		callerRole string
+		expectErr  bool
+		expect     *model.GetByID
 	}{
 		{
-			name: "success",
+			name: "success - same user",
 			mockFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
 				return &user, nil
 			},
-			expectErr: false,
-			expect:    &user,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  false,
+			expect:     &user,
+		},
+		{
+			name: "success - admin accessing other user",
+			mockFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
+				return &user, nil
+			},
+			callerID:   uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			callerRole: "admin",
+			expectErr:  false,
+			expect:     &user,
+		},
+		{
+			name: "forbidden - user accessing other user",
+			mockFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
+				return &user, nil
+			},
+			callerID:   uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "repo error",
 			mockFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
 				return nil, errRepo
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "user not found",
 			mockFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
 				return nil, model.ErrNotFound
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 	}
 
@@ -160,7 +217,7 @@ func TestUserService_GetByID(t *testing.T) {
 			mock := &mockUserRepo{getByIDFunc: tt.mockFunc}
 			service := NewUserService(mock)
 
-			resp, err := service.GetByID(context.Background(), testID)
+			resp, err := service.GetByID(context.Background(), testID, tt.callerID, tt.callerRole)
 
 			if tt.expectErr {
 				if err == nil {
@@ -185,30 +242,56 @@ func TestUserService_DeleteByID(t *testing.T) {
 	testID, _ := uuid.NewV7()
 
 	tests := []struct {
-		name      string
-		mockFunc  func(ctx context.Context, id uuid.UUID) error
-		expectErr bool
+		name       string
+		mockFunc   func(ctx context.Context, id uuid.UUID) error
+		callerID   uuid.UUID
+		callerRole string
+		expectErr  bool
 	}{
 		{
-			name: "success",
+			name: "success - same user",
 			mockFunc: func(ctx context.Context, id uuid.UUID) error {
 				return nil
 			},
-			expectErr: false,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  false,
+		},
+		{
+			name: "success - admin deleting other user",
+			mockFunc: func(ctx context.Context, id uuid.UUID) error {
+				return nil
+			},
+			callerID:   uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			callerRole: "admin",
+			expectErr:  false,
+		},
+		{
+			name: "forbidden - user deleting other user",
+			mockFunc: func(ctx context.Context, id uuid.UUID) error {
+				return nil
+			},
+			callerID:   uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "repo error",
 			mockFunc: func(ctx context.Context, id uuid.UUID) error {
 				return errRepo
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "user already deleted",
 			mockFunc: func(ctx context.Context, id uuid.UUID) error {
 				return model.ErrAlreadyDeleted
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 	}
 
@@ -217,7 +300,7 @@ func TestUserService_DeleteByID(t *testing.T) {
 			mock := &mockUserRepo{deleteByIDFunc: tt.mockFunc}
 			service := NewUserService(mock)
 
-			err := service.DeleteByID(context.Background(), testID)
+			err := service.DeleteByID(context.Background(), testID, tt.callerID, tt.callerRole)
 
 			if tt.expectErr {
 				if err == nil {
@@ -244,44 +327,65 @@ func TestUserService_UpdateByID(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		mockFunc  func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error
-		expectErr bool
+		name       string
+		mockFunc   func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error
+		callerID   uuid.UUID
+		callerRole string
+		expectErr  bool
 	}{
 		{
-			name: "success",
+			name: "success - same user",
 			mockFunc: func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
 				return nil
 			},
-			expectErr: false,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  false,
+		},
+		{
+			name: "forbidden - user updating other user",
+			mockFunc: func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
+				return nil
+			},
+			callerID:   uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "repo error",
 			mockFunc: func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
 				return errRepo
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "user not found",
 			mockFunc: func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
 				return model.ErrNotFound
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "user already deleted",
 			mockFunc: func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
 				return model.ErrAlreadyDeleted
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 		{
 			name: "bad request - nil fields",
 			mockFunc: func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
 				return model.ErrBadRequest
 			},
-			expectErr: true,
+			callerID:   testID,
+			callerRole: "user",
+			expectErr:  true,
 		},
 	}
 
@@ -290,7 +394,7 @@ func TestUserService_UpdateByID(t *testing.T) {
 			mock := &mockUserRepo{updateByIDFunc: tt.mockFunc}
 			service := NewUserService(mock)
 
-			err := service.UpdateByID(context.Background(), testID, updateData)
+			err := service.UpdateByID(context.Background(), testID, updateData, tt.callerID, tt.callerRole)
 
 			if tt.expectErr {
 				if err == nil {

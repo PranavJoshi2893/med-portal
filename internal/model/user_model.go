@@ -33,6 +33,43 @@ type UpdateUser struct {
 	LastName  *string `json:"last_name"`
 }
 
+func (m *UpdateUser) Validate() error {
+	var errs ValidationErrors
+
+	if m == nil {
+		return ValidationErrors{FieldError{Field: "first_name", Message: "first name is required"}, FieldError{Field: "last_name", Message: "last name is required"}}
+	}
+
+	if m.FirstName == nil {
+		errs = append(errs, FieldError{Field: "first_name", Message: "first name is required"})
+	} else {
+		trimmed := strings.TrimSpace(*m.FirstName)
+		m.FirstName = &trimmed
+		if trimmed == "" {
+			errs = append(errs, FieldError{Field: "first_name", Message: "first name is required"})
+		} else if !isValidName(trimmed) {
+			errs = append(errs, FieldError{Field: "first_name", Message: "invalid first name"})
+		}
+	}
+
+	if m.LastName == nil {
+		errs = append(errs, FieldError{Field: "last_name", Message: "last name is required"})
+	} else {
+		trimmed := strings.TrimSpace(*m.LastName)
+		m.LastName = &trimmed
+		if trimmed == "" {
+			errs = append(errs, FieldError{Field: "last_name", Message: "last name is required"})
+		} else if !isValidName(trimmed) {
+			errs = append(errs, FieldError{Field: "last_name", Message: "invalid last name"})
+		}
+	}
+
+	if len(errs) > 0 {
+		return errs
+	}
+	return nil
+}
+
 type GetAll struct {
 	ID        uuid.UUID `json:"id"`
 	FirstName string    `json:"first_name"`
@@ -154,8 +191,6 @@ func (m *LoginUser) Validate() error {
 				Field:   "email",
 				Message: "invalid email",
 			})
-		} else {
-			m.Email = strings.ToLower(m.Email)
 		}
 	}
 
@@ -166,6 +201,9 @@ func (m *LoginUser) Validate() error {
 		})
 	}
 
+	if len(errs) > 0 {
+		return errs
+	}
 	return nil
 }
 

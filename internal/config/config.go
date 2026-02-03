@@ -21,13 +21,12 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-
 	err := godotenv.Load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load environment variables: %v", err)
 	}
 
-	return &Config{
+	cfg := &Config{
 		ServerPort:      os.Getenv("PORT"),
 		DBUser:          os.Getenv("POSTGRES_USER"),
 		DBName:          os.Getenv("POSTGRES_DB"),
@@ -38,5 +37,17 @@ func Load() (*Config, error) {
 		Pepper:          os.Getenv("PEPPER"),
 		AccessTokenKey:  os.Getenv("ACCESS_TOKEN_KEY"),
 		RefreshTokenKey: os.Getenv("REFRESH_TOKEN_KEY"),
-	}, nil
+	}
+
+	if cfg.Pepper == "" {
+		return nil, fmt.Errorf("PEPPER is required")
+	}
+	if cfg.AccessTokenKey == "" {
+		return nil, fmt.Errorf("ACCESS_TOKEN_KEY is required")
+	}
+	if cfg.RefreshTokenKey == "" {
+		return nil, fmt.Errorf("REFRESH_TOKEN_KEY is required")
+	}
+
+	return cfg, nil
 }

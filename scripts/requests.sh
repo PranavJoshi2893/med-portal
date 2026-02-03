@@ -1,34 +1,55 @@
-#! /usr/bin/bash
+#!/usr/bin/bash
 
-# auth queries
+BASE_URL="http://localhost:3000/api/v1"
+CREDENTIALS='{"email":"pranavjoshi@gmail.com","password":"Admin@123"}'
+REGISTER_DATA='{"first_name":"Pranav","last_name":"Joshi","email":"pranavjoshi@gmail.com","password":"Admin@123"}'
 
-# register
-curl -s -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d '{"first_name":"Pranav","last_name":"Joshi","email":"pranavjoshi@gmail.com","password":"Admin@123"}' | jq
+# --- Register (ignores 409 if user already exists) ---
+echo "=== Register ==="
+curl -s -X POST "$BASE_URL/auth/register" -H "Content-Type: application/json" -d "$REGISTER_DATA" | jq
 
-# login
-curl -s -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"pranavjoshi@gmail.com","password":"Admin@123"}' | jq
+# --- Login (saves cookie for refresh/logout, captures token for user API) ---
+echo "=== Login ==="
+RESPONSE=$(curl -s -c cookies.txt -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "$CREDENTIALS")
 
-# token and user id stored in variables for further requests
-sleep 1
-TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"pranavjoshi@gmail.com","password":"Admin@123"}' | jq -r '.data.access_token')
-USER_ID=$(curl -s -X GET http://localhost:3000/api/v1/users/ -H "Authorization: Bearer $TOKEN" | jq -r '.data[0].id')
+TOKEN=$(echo "$RESPONSE" | jq -r '.data.access_token')
 
+if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+  echo "Login failed. Response:"
+  echo "$RESPONSE" | jq
+  exit 1
+fi
 
-# user queries
-# get all users
-curl -s -X GET http://localhost:3000/api/v1/users/ -H "Authorization: Bearer $TOKEN" | jq
-# get user by id
-curl -s -X GET http://localhost:3000/api/v1/users/$USER_ID -H "Authorization: Bearer $TOKEN" | jq
+USER_ID=$(curl -s -X GET "$BASE_URL/users/" \
+  -H "Authorization: Bearer $TOKEN" \
+  | jq -r '.data[0].id')
 
+# --- Auth (run separately if needed) ---
+# curl -s -X POST "$BASE_URL/auth/register" -H "Content-Type: application/json" -d '{"first_name":"Pranav","last_name":"Joshi","email":"pranavjoshi@gmail.com","password":"Admin@123"}' | jq
 
-# update user by id
-curl -s -X PATCH http://localhost:3000/api/v1/users/$USER_ID -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"first_name":"Pranav123","last_name":"Joshi123"}' | jq
+# --- User queries ---
+echo "=== Get all users ==="
+curl -s -X GET "$BASE_URL/users/" -H "Authorization: Bearer $TOKEN" | jq
 
-# delete user by id
-curl -s -X DELETE http://localhost:3000/api/v1/users/$USER_ID -H "Authorization: Bearer $TOKEN" | jq
+echo "=== Get user by id ==="
+curl -s -X GET "$BASE_URL/users/$USER_ID" -H "Authorization: Bearer $TOKEN" | jq
 
-# # validation errors
-# curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d '{"first_name":"Pranav","last_name":"Joshi","email":"pranavjoshigmail.com","password":"Admin@123"}'
-# curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d '{"first_name":"Pranav123","last_name":"Joshi","email":"pranavjoshi@gmail.com","password":"Admin@123"}'
-# curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d '{"first_name":"Pranav123","last_name":"Joshi123","email":"pranavjoshi@gmail.com","password":"Admin@123"}'
-# curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d '{"first_name":"Pranav","last_name":"Joshi123","email":"pranavjoshi@gmail.com","password":"Admin@123"}'
+echo "=== Update user ==="
+curl -s -X PATCH "$BASE_URL/users/$USER_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"first_name":"Pranav123","last_name":"Joshi123"}' | jq
+
+# --- Refresh (uses cookie from login) ---
+echo "=== Refresh token ==="
+curl -s -X POST "$BASE_URL/auth/refresh" -b cookies.txt | jq
+
+# --- Logout (uses cookie) ---
+echo "=== Logout ==="
+curl -s -X POST "$BASE_URL/auth/logout" -b cookies.txt | jq
+
+# --- Delete (comment out to keep user for next run) ---
+echo "=== Delete user ==="
+curl -s -X DELETE "$BASE_URL/users/$USER_ID" -H "Authorization: Bearer $TOKEN" | jq

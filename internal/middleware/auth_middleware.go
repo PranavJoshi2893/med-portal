@@ -35,7 +35,12 @@ func AccessTokenMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 				})
 				return
 			}
+			role := claims.Role
+			if role == "" {
+				role = "user"
+			}
 			ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
+			ctx = context.WithValue(ctx, "role", role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -3,8 +3,10 @@ package encrypt
 import (
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 
 	"golang.org/x/crypto/bcrypt"
@@ -67,6 +69,12 @@ func (ph *PasswordHasher) hmacSHA384(password string) []byte {
 	h := hmac.New(sha512.New384, ph.pepper)
 	h.Write([]byte(password))
 	return h.Sum(nil)
+}
+
+// HashToken returns a SHA-256 hex hash of the token for secure storage.
+func HashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 // GeneratePepper generates a random pepper (run once, store securely)

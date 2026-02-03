@@ -126,6 +126,14 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/api/v1/auth",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+
 	responses.WriteSuccess(w, http.StatusOK, "logout successful", nil)
 }
 
@@ -137,6 +145,16 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    data.RefreshToken,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/api/v1/auth",
+		MaxAge:   60 * 60 * 24 * 7,
+	})
 
 	responses.WriteSuccess(
 		w,

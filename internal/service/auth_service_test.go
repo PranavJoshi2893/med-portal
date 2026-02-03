@@ -253,12 +253,12 @@ func TestAuthService_Logout(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:  "token not found",
+			name:  "token not found - idempotent success",
 			token: "invalid-token",
 			mockFunc: func(ctx context.Context, token string) error {
 				return model.ErrNotFound
 			},
-			expectErr: true,
+			expectErr: false,
 		},
 	}
 
@@ -295,14 +295,38 @@ func TestAuthService_Refresh(t *testing.T) {
 	testID, _ := uuid.NewV7()
 
 	tests := []struct {
-		name      string
-		ctx       context.Context
-		expectErr bool
+		name              string
+		ctx               context.Context
+		revokeRefreshFunc func(ctx context.Context, token string) error
+		expectErr         bool
 	}{
 		{
-			name:      "success",
-			ctx:       context.WithValue(context.WithValue(context.Background(), "user_id", testID), "role", "user"),
+			name: "success",
+			ctx: context.WithValue(
+				context.WithValue(
+					context.WithValue(context.Background(), "user_id", testID),
+					"role", "user",
+				),
+				"refresh_token", "old-token",
+			),
+			revokeRefreshFunc: func(ctx context.Context, token string) error {
+				return nil
+			},
 			expectErr: false,
+		},
+		{
+			name: "token reuse - returns unauthorized",
+			ctx: context.WithValue(
+				context.WithValue(
+					context.WithValue(context.Background(), "user_id", testID),
+					"role", "user",
+				),
+				"refresh_token", "reused-token",
+			),
+			revokeRefreshFunc: func(ctx context.Context, token string) error {
+				return model.ErrNotFound
+			},
+			expectErr: true,
 		},
 		{
 			name:      "missing user_id in context",
@@ -313,7 +337,7 @@ func TestAuthService_Refresh(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &mockAuthRepo{}
+			mockRepo := &mockAuthRepo{revokeRefreshFunc: tt.revokeRefreshFunc}
 			service := NewAuthService(mockRepo, "test-pepper", "test-access-key", "test-refresh-key")
 
 			resp, err := service.Refresh(tt.ctx)
@@ -331,6 +355,9 @@ func TestAuthService_Refresh(t *testing.T) {
 
 			if resp == nil || resp.AccessToken == "" {
 				t.Error("expected access token in response")
+			}
+			if resp != nil && resp.RefreshToken == "" {
+				t.Error("expected refresh token in response")
 			}
 		})
 	}
