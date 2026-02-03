@@ -41,30 +41,33 @@ func AccessTokenMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	}
 }
 
-func RefreshTokenMiddleware(cfg *config.Config, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("Authorization")
-		if token == "" {
-			responses.WriteError(w, responses.ErrorResponse{
-				Code:    http.StatusUnauthorized,
-				Status:  "UNAUTHORIZED",
-				Message: "Unauthorized",
-			})
-			return
-		}
+func RefreshTokenMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := r.Cookie("refresh_token")
+			if err != nil {
+				responses.WriteError(w, responses.ErrorResponse{
+					Code:    http.StatusUnauthorized,
+					Status:  "UNAUTHORIZED",
+					Message: "Unauthorized",
+				})
+				return
+			}
 
-		token = strings.TrimPrefix(token, "Bearer ")
+			claims, err := auth.VerifyRefreshToken(cfg.RefreshTokenKey, token.Value)
+			if err != nil {
+				responses.WriteError(w, responses.ErrorResponse{
+					Code:    http.StatusUnauthorized,
+					Status:  "UNAUTHORIZED",
+					Message: "Unauthorized",
+				})
+				return
+			}
 
-		claims, err := auth.VerifyRefreshToken(cfg.RefreshTokenKey, token)
-		if err != nil {
-			responses.WriteError(w, responses.ErrorResponse{
-				Code:    http.StatusUnauthorized,
-				Status:  "UNAUTHORIZED",
-				Message: "Unauthorized",
-			})
-			return
-		}
-		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
+			ctx = context.WithValue(ctx, "role", claims.Role)
+			ctx = context.WithValue(ctx, "refresh_token", token.Value)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

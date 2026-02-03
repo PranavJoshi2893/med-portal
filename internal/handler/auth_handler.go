@@ -90,7 +90,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
-		Path:     "/api/v1/auth/refresh",
+		Path:     "/api/v1/auth",
 		MaxAge:   60 * 60 * 24 * 7,
 	})
 
@@ -105,4 +105,45 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	token, ok := ctx.Value("refresh_token").(string)
+	if !ok || token == "" {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Status:  "UNAUTHORIZED",
+			Message: "Unauthorized",
+		})
+		return
+	}
+
+	err := h.service.Logout(ctx, token)
+	if err != nil {
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
+		return
+	}
+
+	responses.WriteSuccess(w, http.StatusOK, "logout successful", nil)
+}
+
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	data, err := h.service.Refresh(ctx)
+	if err != nil {
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
+		return
+	}
+
+	responses.WriteSuccess(
+		w,
+		http.StatusOK,
+		"refresh successful",
+		struct {
+			AccessToken string `json:"access_token"`
+		}{AccessToken: data.AccessToken},
+	)
 }

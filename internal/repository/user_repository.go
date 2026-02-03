@@ -12,6 +12,7 @@ type UserRepository interface {
 	GetAll(ctx context.Context) ([]model.GetAll, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
+	UpdateByID(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error
 }
 
 type UserRepo struct {
@@ -97,6 +98,32 @@ func (r *UserRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	q = `UPDATE users SET is_deleted = true WHERE id = $1`
 
 	if _, err := r.db.ExecContext(ctx, q, id); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *UserRepo) UpdateByID(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
+	if data == nil || data.FirstName == nil || data.LastName == nil {
+		return model.ErrBadRequest
+	}
+
+	q := `SELECT is_deleted FROM users WHERE id=$1`
+	var isDeleted bool
+	if err := r.db.QueryRowContext(ctx, q, id).Scan(&isDeleted); err != nil {
+		if err == sql.ErrNoRows {
+			return model.ErrNotFound
+		}
+		return err
+	}
+
+	if isDeleted {
+		return model.ErrAlreadyDeleted
+	}
+
+	q = `UPDATE users SET first_name=$1, last_name=$2 WHERE id = $3 AND is_deleted=false`
+	if _, err := r.db.ExecContext(ctx, q, *data.FirstName, *data.LastName, id); err != nil {
 		return err
 	}
 

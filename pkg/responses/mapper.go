@@ -40,6 +40,20 @@ func FromModelError(err error, message string) ErrorResponse {
 			Message: message,
 		}
 
+	case errors.Is(err, model.ErrUnauthorized):
+		return ErrorResponse{
+			Code:    http.StatusUnauthorized,
+			Status:  "UNAUTHORIZED",
+			Message: message,
+		}
+
+	case errors.Is(err, model.ErrBadRequest):
+		return ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "BAD_REQUEST",
+			Message: message,
+		}
+
 	default:
 		return ErrorResponse{
 			Code:    http.StatusInternalServerError,

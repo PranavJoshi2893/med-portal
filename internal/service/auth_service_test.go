@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 	"github.com/PranavJoshi2893/med-portal/pkg/encrypt"
@@ -10,8 +11,10 @@ import (
 )
 
 type mockAuthRepo struct {
-	registerFunc func(ctx context.Context, user model.User) error
-	loginFunc    func(ctx context.Context, email string) (*model.GetByEmail, error)
+	registerFunc      func(ctx context.Context, user model.User) error
+	loginFunc         func(ctx context.Context, email string) (*model.GetByEmail, error)
+	storeRefreshFunc  func(ctx context.Context, id uuid.UUID, userID uuid.UUID, token string, expiresAt time.Time) error
+	revokeRefreshFunc func(ctx context.Context, token string) error
 }
 
 func (m *mockAuthRepo) Register(ctx context.Context, user model.User) error {
@@ -26,6 +29,20 @@ func (m *mockAuthRepo) Login(ctx context.Context, email string) (*model.GetByEma
 		return m.loginFunc(ctx, email)
 	}
 	return nil, nil
+}
+
+func (m *mockAuthRepo) StoreRefreshToken(ctx context.Context, id uuid.UUID, userID uuid.UUID, token string, expiresAt time.Time) error {
+	if m.storeRefreshFunc != nil {
+		return m.storeRefreshFunc(ctx, id, userID, token, expiresAt)
+	}
+	return nil
+}
+
+func (m *mockAuthRepo) RevokeRefreshToken(ctx context.Context, token string) error {
+	if m.revokeRefreshFunc != nil {
+		return m.revokeRefreshFunc(ctx, token)
+	}
+	return nil
 }
 
 func TestAuthService_Register(t *testing.T) {
@@ -46,6 +63,13 @@ func TestAuthService_Register(t *testing.T) {
 			name: "repo error",
 			mockFunc: func(ctx context.Context, user model.User) error {
 				return errRepo
+			},
+			expectErr: true,
+		},
+		{
+			name: "email already exists",
+			mockFunc: func(ctx context.Context, user model.User) error {
+				return model.ErrAlreadyExists
 			},
 			expectErr: true,
 		},
@@ -93,10 +117,11 @@ func TestAuthService_Login(t *testing.T) {
 	hashedPassword, _ := hasher.HashPassword("password123")
 
 	tests := []struct {
-		name      string
-		loginData *model.LoginUser
-		mockFunc  func(ctx context.Context, email string) (*model.GetByEmail, error)
-		expectErr bool
+		name             string
+		loginData        *model.LoginUser
+		mockFunc         func(ctx context.Context, email string) (*model.GetByEmail, error)
+		storeRefreshFunc func(ctx context.Context, id uuid.UUID, userID uuid.UUID, token string, expiresAt time.Time) error
+		expectErr        bool
 	}{
 		{
 			name: "success",
@@ -108,6 +133,7 @@ func TestAuthService_Login(t *testing.T) {
 				return &model.GetByEmail{
 					ID:       testID,
 					Password: hashedPassword,
+					Role:     "user",
 				}, nil
 			},
 			expectErr: false,
@@ -133,7 +159,26 @@ func TestAuthService_Login(t *testing.T) {
 				return &model.GetByEmail{
 					ID:       testID,
 					Password: hashedPassword,
+					Role:     "user",
 				}, nil
+			},
+			expectErr: true,
+		},
+		{
+			name: "store refresh token fails",
+			loginData: &model.LoginUser{
+				Email:    "johndoe@test.com",
+				Password: "password123",
+			},
+			mockFunc: func(ctx context.Context, email string) (*model.GetByEmail, error) {
+				return &model.GetByEmail{
+					ID:       testID,
+					Password: hashedPassword,
+					Role:     "user",
+				}, nil
+			},
+			storeRefreshFunc: func(ctx context.Context, id uuid.UUID, userID uuid.UUID, token string, expiresAt time.Time) error {
+				return errRepo
 			},
 			expectErr: true,
 		},
@@ -142,7 +187,8 @@ func TestAuthService_Login(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := &mockAuthRepo{
-				loginFunc: tt.mockFunc,
+				loginFunc:        tt.mockFunc,
+				storeRefreshFunc: tt.storeRefreshFunc,
 			}
 
 			service := NewAuthService(
@@ -181,5 +227,111 @@ func TestAuthService_Login(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestAuthService_Logout(t *testing.T) {
+	tests := []struct {
+		name      string
+		token     string
+		mockFunc  func(ctx context.Context, token string) error
+		expectErr bool
+	}{
+		{
+			name:  "success",
+			token: "valid-refresh-token",
+			mockFunc: func(ctx context.Context, token string) error {
+				return nil
+			},
+			expectErr: false,
+		},
+		{
+			name:  "repo error",
+			token: "valid-refresh-token",
+			mockFunc: func(ctx context.Context, token string) error {
+				return errRepo
+			},
+			expectErr: true,
+		},
+		{
+			name:  "token not found",
+			token: "invalid-token",
+			mockFunc: func(ctx context.Context, token string) error {
+				return model.ErrNotFound
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockAuthRepo{
+				revokeRefreshFunc: tt.mockFunc,
+			}
+
+			service := NewAuthService(
+				mockRepo,
+				"test-pepper",
+				"test-access-key",
+				"test-refresh-key",
+			)
+
+			err := service.Logout(context.Background(), tt.token)
+
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestAuthService_Refresh(t *testing.T) {
+	testID, _ := uuid.NewV7()
+
+	tests := []struct {
+		name      string
+		ctx       context.Context
+		expectErr bool
+	}{
+		{
+			name:      "success",
+			ctx:       context.WithValue(context.WithValue(context.Background(), "user_id", testID), "role", "user"),
+			expectErr: false,
+		},
+		{
+			name:      "missing user_id in context",
+			ctx:       context.Background(),
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockAuthRepo{}
+			service := NewAuthService(mockRepo, "test-pepper", "test-access-key", "test-refresh-key")
+
+			resp, err := service.Refresh(tt.ctx)
+
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if resp == nil || resp.AccessToken == "" {
+				t.Error("expected access token in response")
+			}
+		})
+	}
 }

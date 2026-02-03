@@ -25,7 +25,7 @@ func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler, 
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 	r.Use(middleware.Recoverer)
@@ -40,6 +40,8 @@ func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler, 
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+			r.With(appMiddleware.RefreshTokenMiddleware(cfg)).Post("/logout", authHandler.Logout)
+			r.With(appMiddleware.RefreshTokenMiddleware(cfg)).Post("/refresh", authHandler.Refresh)
 		})
 
 		r.Route("/users", func(r chi.Router) {
@@ -47,7 +49,7 @@ func Routes(authHandler *handler.AuthHandler, userHandler *handler.UserHandler, 
 			r.Get("/", userHandler.GetAll)
 			r.Delete("/{id}", userHandler.DeleteByID)
 			r.Get("/{id}", userHandler.GetByID)
-			r.Patch("/{id}", nil)
+			r.Patch("/{id}", userHandler.UpdateByID)
 		})
 	})
 

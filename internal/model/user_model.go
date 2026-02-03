@@ -50,6 +50,7 @@ type GetByID struct {
 type GetByEmail struct {
 	ID       uuid.UUID
 	Password string
+	Role     string
 }
 
 type DeleteUser struct {
@@ -65,9 +66,9 @@ func (m *CreateUser) Validate() error {
 	var errs ValidationErrors
 
 	// normalize
-	m.Email = strings.ToLower(strings.TrimSpace(m.Email))
+	m.FirstName = strings.TrimSpace(m.FirstName)
 	m.LastName = strings.TrimSpace(m.LastName)
-	m.Email = strings.TrimSpace(m.Email)
+	m.Email = strings.ToLower(strings.TrimSpace(m.Email))
 
 	if m.FirstName == "" {
 		errs = append(errs, FieldError{

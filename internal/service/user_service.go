@@ -55,3 +55,17 @@ func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID
 	return user, nil
 
 }
+
+func (s *UserService) UpdateByID(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error {
+	err := s.repo.UpdateByID(ctx, id, data)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return fmt.Errorf("user %w", err)
+		}
+		if errors.Is(err, model.ErrAlreadyDeleted) {
+			return fmt.Errorf("user %w", err)
+		}
+		return err
+	}
+	return nil
+}

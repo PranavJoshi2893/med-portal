@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
@@ -43,6 +44,7 @@ func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 			Status:  "INVALID_ID",
 			Message: "Invalid User ID",
 		})
+		return
 	}
 
 	ctx := r.Context()
@@ -81,4 +83,47 @@ func (h *UserHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 
+}
+
+func (h *UserHandler) UpdateByID(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+
+	if err != nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "INVALID_ID",
+			Message: "Invalid User ID",
+		})
+
+		return
+	}
+
+	var user *model.UpdateUser
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	defer r.Body.Close()
+
+	if err := dec.Decode(&user); err != nil {
+		responses.WriteError(w, responses.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Status:  "INVALID_JSON",
+			Message: "Invalid JSON payload",
+		})
+		return
+	}
+
+	ctx := r.Context()
+	err = h.service.UpdateByID(ctx, id, user)
+	if err != nil {
+		responses.WriteError(w, responses.FromModelError(err, err.Error()))
+		return
+	}
+
+	responses.WriteSuccess(
+		w,
+		http.StatusOK,
+		"user updated successfully",
+		nil,
+	)
 }
