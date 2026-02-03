@@ -12,17 +12,25 @@ import (
 )
 
 type mockUserRepo struct {
-	getAllFunc     func(ctx context.Context) ([]model.GetAll, error)
+	getAllFunc     func(ctx context.Context, limit, offset int) ([]model.GetAll, error)
+	getCountFunc   func(ctx context.Context) (int, error)
 	deleteByIDFunc func(ctx context.Context, id uuid.UUID) error
 	getByIDFunc    func(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
 	updateByIDFunc func(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error
 }
 
-func (m *mockUserRepo) GetAll(ctx context.Context) ([]model.GetAll, error) {
+func (m *mockUserRepo) GetAll(ctx context.Context, limit, offset int) ([]model.GetAll, error) {
 	if m.getAllFunc != nil {
-		return m.getAllFunc(ctx)
+		return m.getAllFunc(ctx, limit, offset)
 	}
 	return nil, nil
+}
+
+func (m *mockUserRepo) GetCount(ctx context.Context) (int, error) {
+	if m.getCountFunc != nil {
+		return m.getCountFunc(ctx)
+	}
+	return 0, nil
 }
 
 func (m *mockUserRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
@@ -58,28 +66,34 @@ func TestUserService_GetAll(t *testing.T) {
 		{ID: testID_2, FirstName: "Jane", LastName: "Doe", Email: "janedoe@test.com"},
 	}
 
+	params := model.PaginationParams{Page: 1, Limit: 10}
+
 	tests := []struct {
-		name        string
-		mockFunc    func(ctx context.Context) ([]model.GetAll, error)
-		getByIDFunc func(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
-		callerID    *uuid.UUID
-		callerRole  string
-		expectErr   bool
-		expect      []model.GetAll
+		name         string
+		mockFunc     func(ctx context.Context, limit, offset int) ([]model.GetAll, error)
+		getCountFunc func(ctx context.Context) (int, error)
+		getByIDFunc  func(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
+		callerID     *uuid.UUID
+		callerRole   string
+		expectErr    bool
+		expectItems  []model.GetAll
+		expectTotal  int
 	}{
 		{
 			name: "success - admin gets all",
-			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
+			mockFunc: func(ctx context.Context, limit, offset int) ([]model.GetAll, error) {
 				return users, nil
 			},
-			callerID:   &testID_1,
-			callerRole: "admin",
-			expectErr:  false,
-			expect:     users,
+			getCountFunc: func(ctx context.Context) (int, error) { return 2, nil },
+			callerID:     &testID_1,
+			callerRole:   "admin",
+			expectErr:    false,
+			expectItems:  users,
+			expectTotal:  2,
 		},
 		{
 			name: "repo error",
-			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
+			mockFunc: func(ctx context.Context, limit, offset int) ([]model.GetAll, error) {
 				return nil, errRepo
 			},
 			callerID:   &testID_1,
@@ -88,32 +102,39 @@ func TestUserService_GetAll(t *testing.T) {
 		},
 		{
 			name: "nil slice treated as empty",
-			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
+			mockFunc: func(ctx context.Context, limit, offset int) ([]model.GetAll, error) {
 				return nil, nil
 			},
-			callerID:   &testID_1,
-			callerRole: "admin",
-			expectErr:  false,
-			expect:     []model.GetAll{},
+			getCountFunc: func(ctx context.Context) (int, error) { return 0, nil },
+			callerID:     &testID_1,
+			callerRole:   "admin",
+			expectErr:    false,
+			expectItems:  []model.GetAll{},
+			expectTotal:  0,
 		},
 		{
 			name: "regular user gets only self",
-			mockFunc: func(ctx context.Context) ([]model.GetAll, error) {
+			mockFunc: func(ctx context.Context, limit, offset int) ([]model.GetAll, error) {
 				return nil, nil
 			},
 			getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {
 				return &model.GetByID{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"}, nil
 			},
-			callerID:   &testID_1,
-			callerRole: "user",
-			expectErr:  false,
-			expect:     []model.GetAll{{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"}},
+			callerID:    &testID_1,
+			callerRole:  "user",
+			expectErr:   false,
+			expectItems: []model.GetAll{{ID: testID_1, FirstName: "John", LastName: "Doe", Email: "johndoe@test.com"}},
+			expectTotal: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockUserRepo{getAllFunc: tt.mockFunc, getByIDFunc: tt.getByIDFunc}
+			mock := &mockUserRepo{
+				getAllFunc:   tt.mockFunc,
+				getCountFunc: tt.getCountFunc,
+				getByIDFunc:  tt.getByIDFunc,
+			}
 			service := NewUserService(mock)
 			callerID := testID_1
 			if tt.callerID != nil {
@@ -124,7 +145,7 @@ func TestUserService_GetAll(t *testing.T) {
 				callerRole = "user"
 			}
 
-			resp, err := service.GetAll(context.Background(), callerID, callerRole)
+			resp, err := service.GetAll(context.Background(), callerID, callerRole, params)
 
 			if tt.expectErr {
 				if err == nil {
@@ -137,8 +158,11 @@ func TestUserService_GetAll(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if !slices.Equal(resp, tt.expect) {
-				t.Errorf("got %v want %v", resp, tt.expect)
+			if !slices.Equal(resp.Items, tt.expectItems) {
+				t.Errorf("got items %v want %v", resp.Items, tt.expectItems)
+			}
+			if resp.Meta.Total != tt.expectTotal {
+				t.Errorf("got total %d want %d", resp.Meta.Total, tt.expectTotal)
 			}
 		})
 	}

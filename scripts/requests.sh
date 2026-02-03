@@ -24,7 +24,7 @@ fi
 
 USER_ID=$(curl -s -X GET "$BASE_URL/users/" \
   -H "Authorization: Bearer $TOKEN" \
-  | jq -r '.data[0].id')
+  | jq -r '.data.items[0].id')
 
 # --- Auth (run separately if needed) ---
 # curl -s -X POST "$BASE_URL/auth/register" -H "Content-Type: application/json" -d '{"first_name":"Pranav","last_name":"Joshi","email":"pranavjoshi@gmail.com","password":"Admin@123"}' | jq

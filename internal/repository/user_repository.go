@@ -9,7 +9,8 @@ import (
 )
 
 type UserRepository interface {
-	GetAll(ctx context.Context) ([]model.GetAll, error)
+	GetAll(ctx context.Context, limit, offset int) ([]model.GetAll, error)
+	GetCount(ctx context.Context) (int, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error)
 	UpdateByID(ctx context.Context, id uuid.UUID, data *model.UpdateUser) error
@@ -25,11 +26,10 @@ func NewUserRepository(db *sql.DB) *UserRepo {
 	}
 }
 
-func (r *UserRepo) GetAll(ctx context.Context) ([]model.GetAll, error) {
+func (r *UserRepo) GetAll(ctx context.Context, limit, offset int) ([]model.GetAll, error) {
+	q := `SELECT id, first_name, last_name, email FROM users WHERE is_deleted = false ORDER BY id LIMIT $1 OFFSET $2`
 
-	q := `SELECT id, first_name, last_name, email FROM users WHERE is_deleted = false`
-
-	data, err := r.db.QueryContext(ctx, q)
+	data, err := r.db.QueryContext(ctx, q, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +57,15 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]model.GetAll, error) {
 	}
 
 	return users, nil
+}
+
+func (r *UserRepo) GetCount(ctx context.Context) (int, error) {
+	q := `SELECT COUNT(*) FROM users WHERE is_deleted = false`
+	var count int
+	if err := r.db.QueryRowContext(ctx, q).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.GetByID, error) {

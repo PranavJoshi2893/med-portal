@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/PranavJoshi2893/med-portal/internal/model"
 	"github.com/PranavJoshi2893/med-portal/internal/service"
@@ -32,6 +33,21 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 	}
 }
 
+// Allowed page sizes for pagination.
+var allowedLimits = map[int]bool{5: true, 10: true, 100: true}
+
+func parsePagination(r *http.Request) model.PaginationParams {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if !allowedLimits[limit] {
+		limit = 10
+	}
+	return model.PaginationParams{Page: page, Limit: limit}
+}
+
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	callerID, callerRole := getCallerFromContext(ctx)
@@ -43,7 +59,8 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	users, err := h.service.GetAll(ctx, *callerID, callerRole)
+	params := parsePagination(r)
+	result, err := h.service.GetAll(ctx, *callerID, callerRole, params)
 	if err != nil {
 		responses.WriteError(w, responses.FromModelError(err, err.Error()))
 		return
@@ -53,7 +70,7 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		w,
 		http.StatusOK,
 		"success",
-		users,
+		result,
 	)
 }
 

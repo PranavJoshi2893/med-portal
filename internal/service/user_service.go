@@ -24,9 +24,29 @@ func isAdmin(role string) bool {
 	return role == "admin" || role == "super_admin"
 }
 
-func (s *UserService) GetAll(ctx context.Context, callerID uuid.UUID, callerRole string) ([]model.GetAll, error) {
+func (s *UserService) GetAll(ctx context.Context, callerID uuid.UUID, callerRole string, params model.PaginationParams) (*model.PaginatedUsersResponse, error) {
 	if isAdmin(callerRole) {
-		return s.repo.GetAll(ctx)
+		users, err := s.repo.GetAll(ctx, params.Limit, (params.Page-1)*params.Limit)
+		if err != nil {
+			return nil, err
+		}
+		total, err := s.repo.GetCount(ctx)
+		if err != nil {
+			return nil, err
+		}
+		totalPages := total / params.Limit
+		if total%params.Limit > 0 {
+			totalPages++
+		}
+		return &model.PaginatedUsersResponse{
+			Items: users,
+			Meta: model.PaginationMeta{
+				Page:       params.Page,
+				Limit:      params.Limit,
+				Total:      total,
+				TotalPages: totalPages,
+			},
+		}, nil
 	}
 	user, err := s.repo.GetByID(ctx, callerID)
 	if err != nil {
@@ -35,12 +55,20 @@ func (s *UserService) GetAll(ctx context.Context, callerID uuid.UUID, callerRole
 		}
 		return nil, err
 	}
-	return []model.GetAll{{
-		ID:        user.ID,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-	}}, nil
+	return &model.PaginatedUsersResponse{
+		Items: []model.GetAll{{
+			ID:        user.ID,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+			Email:     user.Email,
+		}},
+		Meta: model.PaginationMeta{
+			Page:       1,
+			Limit:      params.Limit,
+			Total:      1,
+			TotalPages: 1,
+		},
+	}, nil
 }
 
 func (s *UserService) DeleteByID(ctx context.Context, id uuid.UUID, callerID uuid.UUID, callerRole string) error {

@@ -24,7 +24,15 @@ func AccessTokenMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
-			token = strings.TrimPrefix(token, "Bearer ")
+			token = strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
+			if token == "" {
+				responses.WriteError(w, responses.ErrorResponse{
+					Code:    http.StatusUnauthorized,
+					Status:  "UNAUTHORIZED",
+					Message: "Unauthorized",
+				})
+				return
+			}
 
 			claims, err := auth.VerifyAccessToken(cfg.AccessTokenKey, token)
 			if err != nil {

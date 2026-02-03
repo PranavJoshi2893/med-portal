@@ -77,6 +77,26 @@ type GetAll struct {
 	Email     string    `json:"email"`
 }
 
+// PaginationParams holds page and limit for list endpoints.
+// Limit must be 5, 10, or 100.
+type PaginationParams struct {
+	Page  int
+	Limit int
+}
+
+// PaginatedUsersResponse wraps user list with pagination metadata.
+type PaginatedUsersResponse struct {
+	Items []GetAll       `json:"items"`
+	Meta  PaginationMeta `json:"meta"`
+}
+
+type PaginationMeta struct {
+	Page       int `json:"page"`
+	Limit      int `json:"limit"`
+	Total      int `json:"total"`
+	TotalPages int `json:"total_pages"`
+}
+
 type GetByID struct {
 	ID        uuid.UUID `json:"id"`
 	FirstName string    `json:"first_name"`
