@@ -1,59 +1,136 @@
-# Running the App
+# Med Portal
+
+A REST API for user management with JWT authentication, built in Go.
+
+## Tech Stack
+
+- **Go** – Backend
+- **Chi** – HTTP router
+- **PostgreSQL** – Database
+- **JWT** – Access & refresh tokens
 
 ## Prerequisites
 
-* Docker and Docker Compose installed
-* Go installed
-* No other PostgreSQL instance running on port 5432
+- Go 1.21+
+- Docker and Docker Compose
+- PostgreSQL (via Docker, or local on port 5432)
 
 ## Setup
 
-### 1. Create environment file
+### 1. Environment
 
-Create a `.env` file from `example.env` in the project root.
+Create a `.env` file from `example.env`:
 
-This file is required for both local development and production.
+```bash
+cp example.env .env
+```
 
-### 2. Start PostgreSQL
+Configure at least:
 
-Start the PostgreSQL container before running the application:
+- `PORT` – Server port (e.g. `:3000`)
+- `PEPPER` – Password hashing pepper
+- `ACCESS_TOKEN_KEY` – JWT access token secret
+- `REFRESH_TOKEN_KEY` – JWT refresh token secret
+- `DATABASE_URL` – PostgreSQL connection string
+
+### 2. Database
+
+Start PostgreSQL:
 
 ```bash
 docker-compose up -d
 ```
 
-To stop and remove the container along with its volumes:
+Run migrations:
 
 ```bash
-docker-compose down -v
+make migrate-up-all
 ```
 
-### 3. Build the application
-
-Build the Go binary:
+### 3. Build & Run
 
 ```bash
 make build
-```
-
-If Go is not located at `/usr/bin/go`, update the path in the `Makefile`
-(for example, `/bin/go`).
-
-If you want a different binary name, update it in the `Makefile`
-to match your application’s desired name.
-
-### 4. Clean build artifacts
-
-Remove the generated binary:
-
-```bash
-make clean
-```
-
-### 5. Run the application
-
-Build and run the binary:
-
-```bash
 make run
 ```
+
+The API runs at `http://localhost:3000` (or your configured port).
+
+## API Reference
+
+Base URL: `/api/v1`
+
+### Auth (public)
+
+| Method | Endpoint        | Description                    |
+|--------|-----------------|--------------------------------|
+| POST   | `/auth/register`| Register a new user            |
+| POST   | `/auth/login`   | Login, returns access token    |
+
+### Auth (refresh token required)
+
+| Method | Endpoint       | Description                    |
+|--------|----------------|--------------------------------|
+| POST   | `/auth/refresh`| Issue new access token        |
+| POST   | `/auth/logout` | Revoke refresh token           |
+
+### Users (access token required)
+
+| Method | Endpoint    | Description                    |
+|--------|-------------|--------------------------------|
+| GET    | `/users/`   | List users (paginated)        |
+| GET    | `/users/{id}`| Get user by ID                |
+| PATCH  | `/users/{id}`| Update user                   |
+| DELETE | `/users/{id}`| Soft delete user              |
+
+### Pagination
+
+`GET /users/` supports:
+
+- `page` – Page number (default: 1)
+- `limit` – Page size: **5**, **10**, or **100** (default: 10)
+
+Example: `GET /users/?page=1&limit=10`
+
+Response:
+
+```json
+{
+  "message": "success",
+  "data": {
+    "items": [...],
+    "meta": {
+      "page": 1,
+      "limit": 10,
+      "total": 50,
+      "total_pages": 5
+    }
+  }
+}
+```
+
+### Authentication
+
+- **Access token**: Send in `Authorization: Bearer <token>` for `/users/*`
+- **Refresh token**: Stored in HTTP-only cookie; used for `/auth/refresh` and `/auth/logout`
+
+## Makefile
+
+| Command           | Description              |
+|-------------------|--------------------------|
+| `make build`      | Build the binary         |
+| `make run`        | Build and run            |
+| `make clean`      | Remove build artifacts   |
+| `make migrate-up` | Run one migration up     |
+| `make migrate-up-all` | Run all migrations up |
+| `make migrate-down`   | Run one migration down   |
+
+## Scripts
+
+`scripts/requests.sh` – Example flow: register, login, list users, update, refresh, logout.
+
+```bash
+./scripts/requests.sh
+```
+
+Requires `jq` and a running server.
